@@ -1,12 +1,19 @@
 [submodule "projects/prj-infnet-lite-streaming"]
 	path = projects/prj-infnet-lite-streaming
 	url = https://github.com/alexribeirofaria/prj-sistemas-web-.net-infnet.git
+	branch = main
+
 [submodule "projects/prj-ai-assistants"]
 	path = projects/prj-ai-assistants
 	url = https://github.com/alexribeirofaria/AI-Assistants.git
+    branch = main
+
 [submodule "projects/prj-jail-container"]
 	path = projects/prj-jail-container
 	url = https://github.com/alexribeirofaria/jail-container.git
+	branch = main
+
 [submodule "projects/prj-despesas-pessoais"]
 	path = projects/prj-despesas-pessoais
 	url = https://github.com/alexribeirofaria/prj-despesas-pessoais.git
+	branch = main
