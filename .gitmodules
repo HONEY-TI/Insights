@@ -12,3 +12,6 @@
 	path = projects/prj-despesas-pessoais
 	url = https://github.com/alexribeirofaria/prj-despesas-pessoais.git
 	branch = main
+[submodule "projects/prj-jail-container"]
+	path = projects/prj-jail-container
+	url = https://github.com/alexribeirofaria/jail-container.git
