@@ -109,7 +109,6 @@ cd /home/$USER/workspace/Insights
 ```bash
 git submodule add https://github.com/user/project-a.git projects/project-a
 
-git submodule add https://github.com/alexribeirofaria/prj-sistemas-web-.net-infnet.git projects/prj-infnet-lite-streaming
 ```
 
 ---
