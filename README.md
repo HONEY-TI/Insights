@@ -1,6 +1,6 @@
 # <img src="https://www.eccobandeiras.com.br/image/cache/catalog/antigas/reino-unido-1111x740.jpg" width="32"> 🧠 Insights to Create a Mono Repo
 
-**Portuguese version:** [README](./.github/README.md)
+**Portuguese version:** [README](../README.md)
 
 ## Central repository for knowledge, processes, and project-related materials.
 

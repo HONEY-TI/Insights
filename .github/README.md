@@ -1,6 +1,6 @@
 # <img src="https://images.icon-icons.com/2088/PNG/512/br_icon_128192.png" width="32"> 🧠 Insights to Create a Mono Repo
 
-**Versão em inglês:** [README](./README.md)
+**Versão em inglês:** [README](./.github/README.md)
 
 ## Repositório central de conhecimento, processos e materiais de projetos.
 
