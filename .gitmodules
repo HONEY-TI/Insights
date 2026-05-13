@@ -1,0 +1,3 @@
+[submodule "projects/prj-infnet-lite-streaming"]
+	path = projects/prj-infnet-lite-streaming
+	url = https://github.com/alexribeirofaria/prj-sistemas-web-.net-infnet.git
