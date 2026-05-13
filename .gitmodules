@@ -4,3 +4,9 @@
 [submodule "projects/prj-ai-assistants"]
 	path = projects/prj-ai-assistants
 	url = https://github.com/alexribeirofaria/AI-Assistants.git
+[submodule "projects/prj-jail-container"]
+	path = projects/prj-jail-container
+	url = https://github.com/alexribeirofaria/jail-container.git
+[submodule "projects/prj-despesas-pessoais"]
+	path = projects/prj-despesas-pessoais
+	url = https://github.com/alexribeirofaria/prj-despesas-pessoais.git
