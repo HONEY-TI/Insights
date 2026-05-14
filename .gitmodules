@@ -14,3 +14,10 @@
 	url = https://github.com/alexribeirofaria/AI-Assistants.git
 	branch = main
 
+[submodule "projects/prj-infnet-lite-streaming"]
+	path = projects/prj-infnet-lite-streaming
+	url = https://github.com/alexribeirofaria/prj-sistemas-web-.net-infnet.git
+    branch = main
+[submodule "projects/prj-pix-charge"]
+	path = projects/prj-pix-charge
+	url = https://github.com/alexribeirofaria/prj-PIXCharge.git
