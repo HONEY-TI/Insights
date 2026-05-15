@@ -1,0 +1,229 @@
+---
+name: git-submodules-project-integration
+description: Integração de Repositórios Git dentro de `/projects`
+---
+
+# 📌 Objetivo
+
+Permitir que projetos dentro de:
+
+```bash
+/home/$USER/workspace/Insights/projects
+```
+
+possam possuir repositórios Git independentes, mantendo integração opcional com o repositório principal `Insights`.
+
+---
+
+# 🧩 Cenário
+
+## 🔗 Relacionados
+
+- [Workspace Patterns](/knowledge/architecture/workspace-patterns.md)
+
+
+### Estrutura principal:
+
+```bash
+/Insights
+├── .git
+├── /projects
+│   ├── project-a
+│   ├── project-b
+│   └── ...
+└── README.md
+```
+
+Cada projeto pode:
+- possuir versionamento independente;
+- utilizar workflows próprios;
+- manter pipelines separadas;
+- possuir autonomia arquitetural;
+- ser reutilizado em outros contextos;
+- permanecer parcialmente integrado ao ecossistema principal.
+
+---
+
+# ✅ Estratégias Possíveis
+
+## 1️⃣ Diretórios Convencionais
+
+Os projetos existem apenas como pastas comuns:
+
+```bash
+/projects/project-a
+/projects/project-b
+```
+
+### ✔️ Vantagens
+- Estrutura simples;
+- Fácil manutenção;
+- Melhor para monorepo;
+- Fluxo Git simplificado.
+
+### ❌ Limitações
+- Histórico compartilhado;
+- Sem independência de versionamento;
+- Pipelines acopladas.
+
+---
+
+# 2️⃣ Git Submodule (Recomendado)
+
+Permite adicionar um repositório Git dentro de outro repositório Git.
+
+---
+
+# ✅ Benefícios
+
+- Histórico independente;
+- Repositórios desacoplados;
+- Workflows separados;
+- Times independentes;
+- Controle granular;
+- Integração opcional;
+- Reutilização facilitada;
+- Compatível com GitHub/GitLab.
+
+---
+
+# ⚙️ Adicionando um Submodule
+
+## Entrar no repositório principal
+
+```bash
+cd /home/$USER/workspace/Insights
+```
+
+---
+
+## Adicionar repositório
+
+```bash
+git submodule add https://github.com/user/project-a.git projects/project-a
+```
+
+---
+
+# 📄 Arquivo `.gitmodules`
+
+O Git criará automaticamente:
+
+```ini
+[submodule "projects/project-a"]
+    path = projects/project-a
+    url = https://github.com/user/project-a.git
+```
+
+---
+
+# 🔄 Clonagem Completa
+
+Ao clonar:
+
+```bash
+git clone --recurse-submodules <repo>
+```
+
+Ou posteriormente:
+
+```bash
+git submodule update --init --recursive
+```
+
+---
+
+# 🔧 Atualizando um Projeto
+
+```bash
+cd projects/project-a
+
+git pull
+```
+
+Depois registrar atualização no repositório principal:
+
+```bash
+cd /home/$USER/workspace/Insights
+
+git add projects/project-a
+git commit -m "update submodule"
+```
+
+---
+
+# 3️⃣ Git Subtree
+
+Alternativa híbrida entre:
+- monorepo;
+- submodule;
+- integração desacoplada.
+
+---
+
+## ✔️ Benefícios
+
+- Mais simples que submodule;
+- Histórico parcialmente integrado;
+- Melhor integração operacional;
+- Menos problemas de sincronização.
+
+---
+
+## Exemplo
+
+```bash
+git subtree add --prefix=projects/project-a <repo-url> main
+```
+
+---
+
+# 📌 Recomendação Arquitetural
+
+Para o ecossistema `Insights`, recomenda-se:
+
+- utilizar diretórios convencionais para conteúdos simples;
+- utilizar `Git Submodules` para projetos independentes;
+- utilizar `Git Subtree` quando houver necessidade de sincronização híbrida;
+- evitar acoplamento excessivo entre projetos.
+
+---
+
+# 🧠 Considerações Operacionais
+
+Cada projeto pode possuir:
+- pipelines próprias;
+- tecnologias diferentes;
+- workflows independentes;
+- convenções específicas;
+- documentações próprias;
+- automações desacopladas.
+
+A integração ao repositório principal deve permanecer flexível e não obrigatória.
+
+---
+
+# 🔒 Observação Importante
+
+Submodules adicionam complexidade operacional.
+
+Sempre documentar:
+- inicialização;
+- sincronização;
+- atualização;
+- clonagem;
+- recovery;
+- workflows associados.
+
+---
+
+# ✅ Conclusão
+
+A utilização de repositórios Git independentes dentro de `/projects` permite:
+- modularidade;
+- escalabilidade;
+- desacoplamento;
+- reutilização;
+- governança distribuída;
+- autonomia operacional;
+- organização híbrida entre monorepo e multi-repo.
