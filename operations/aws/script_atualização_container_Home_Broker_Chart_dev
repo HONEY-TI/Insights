@@ -1,0 +1,15 @@
+#hb-spa.prod.sh
+IMAGEM="alexfariakof/homebrokerspa-prod-img"
+container_id=$(docker ps -q --filter "ancestor=$IMAGEM")
+image_id=$(docker images --format "{{.ID}}" "$IMAGEM")
+
+docker rm --force $container_id
+docker rmi --force $image_id
+
+# Fazer pull da nova imagem Hrome Broker SPA ...
+echo "Fazendo pull da nova imagem: $IMAGEM"
+docker pull $IMAGEM
+
+# Iniciar um novo contêiner com a nova imagem
+echo "Iniciando um novo contêiner Home Broker SPA com a nova imagem..."
+docker run -d --rm -it -p 80:80 -p 443:443 $IMAGEM
