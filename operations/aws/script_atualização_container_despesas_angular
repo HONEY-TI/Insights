@@ -1,0 +1,15 @@
+#dp-angular.prod.sh
+
+IMAGEM="alexfariakof/despesas-frontend-angular-img"
+container_id=$(docker ps -a -q --filter "ancestor=$IMAGEM")
+image_id=$(docker images --format "{{.ID}}" "$IMAGEM")
+docker rm --force $container_id
+docker rmi --force $image_id
+docker pull $IMAGEM
+docker run -d -p 80:80 -p 433:433 $IMAGEM
+
+#Copiando arquivos ssl certificates 
+container_id=$(docker ps -a -q --filter "ancestor=$IMAGEM")
+docker exec -it $container_id rm -r /etc/nginx/certificate/
+docker cp /home/ec2-user/certificate/ $container_id:/etc/nginx/
+docker restart $container_id
