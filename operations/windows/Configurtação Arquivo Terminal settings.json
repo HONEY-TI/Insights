@@ -1,0 +1,121 @@
+{
+    "$help": "https://aka.ms/terminal-documentation",
+    "$schema": "https://aka.ms/terminal-profiles-schema",
+    "actions": [],
+    "copyFormatting": "none",
+    "copyOnSelect": true,
+    "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+    "keybindings": 
+    [
+        {
+            "id": "Terminal.CopyToClipboard",
+            "keys": "ctrl+c"
+        },
+        {
+            "id": "Terminal.PasteFromClipboard",
+            "keys": "ctrl+v"
+        },
+        {
+            "id": "Terminal.FindText",
+            "keys": "ctrl+shift+f"
+        },
+        {
+            "id": "Terminal.DuplicatePaneAuto",
+            "keys": "alt+shift+d"
+        }
+    ],
+    "newTabMenu": 
+    [
+        {
+            "type": "remainingProfiles"
+        }
+    ],
+    "profiles": 
+    {
+        "defaults": 
+        {
+            "opacity": 75
+        },
+        "list": 
+        [
+            {
+                "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+                "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+                "hidden": false,
+                "name": "Windows PowerShell"
+            },
+            {
+                "commandline": "%SystemRoot%\\System32\\cmd.exe",
+                "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+                "hidden": false,
+                "name": "Prompt de comando"
+            },
+            {
+                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "hidden": false,
+                "name": "PowerShell",
+                "source": "Windows.Terminal.PowershellCore"
+            },
+            {
+                "guid": "{b453ae62-4e3d-5e58-b989-0a998ec441b8}",
+                "hidden": false,
+                "name": "Azure Cloud Shell",
+                "source": "Windows.Terminal.Azure"
+            },
+            {
+                "guid": "{5fb123f1-af88-5b5c-8953-d14a8def1978}",
+                "hidden": false,
+                "name": "PowerShell 7",
+                "source": "Windows.Terminal.PowershellCore"
+            },
+            {
+                "guid": "{35cd7cac-0782-5e82-a0ad-6938ece6a569}",
+                "hidden": false,
+                "name": "Developer Command Prompt for VS 2022",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{42216e7a-5752-533c-a320-36fddc5556de}",
+                "hidden": false,
+                "name": "Developer PowerShell for VS 2022",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{002e475c-2204-5587-8d06-7a628686c699}",
+                "hidden": false,
+                "name": "docker-desktop",
+                "source": "Microsoft.WSL"
+            },
+            {
+                "guid": "{d4f7041f-4e74-5b6b-9da6-82f2962dae97}",
+                "hidden": false,
+                "name": "docker-desktop-data",
+                "source": "Microsoft.WSL"
+            },
+            {
+                "guid": "{16208362-94fc-5b1f-a491-5b2624d5ab56}",
+                "hidden": true,
+                "name": "Visual Studio Debug Console",
+                "source": "VSDebugConsole"
+            },
+            {
+                "commandline": "ssh -i \"C:\\Users\\alexf\\Documents\\..dev-documents\\SEREVER Local-WEB\\id_rsa_191.252.113.168\" root@191.252.113.168 ",
+                "guid": "{c1bb2188-bcba-4c64-b798-ee68212c7cba}",
+                "hidden": false,
+                "icon": "C:\\Users\\alexf\\OneDrive\\Imagens\\Projects Icons\\locaweb-icon-filled-256.png",
+                "name": "LOCAL WEB VPS Server",
+                "startingDirectory": "%USERPROFILE%"
+            },
+            {
+                "commandline": "ssh ec2-user@3.80.197.101 -i \"C:\\Users\\alexf\\Documents\\..dev-documents\\SERVER AWS\\alexfariakof-ec2-aws-server.pem\"",
+                "guid": "{a3b23960-57c7-4016-ae83-0d5e7320cbfc}",
+                "hidden": false,
+                "icon": "C:\\Users\\alexf\\OneDrive\\Imagens\\Projects Icons\\aws-icon-filled.png",
+                "name": "AWS EC2 SERVER",
+                "startingDirectory": "%USERPROFILE%"
+            }
+        ]
+    },
+    "schemes": [],
+    "themes": []
+}
