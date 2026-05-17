@@ -1,0 +1,39 @@
+SONAR_TOKEN=6c2d8c3ca7cd0bfe7f67b69f3bc2e6975a55a5d8
+
+
+.github/workflows/build.yml
+name: Build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+Create a configuration file in the root directory of the project and name it sonar-project.properties
+sonar.projectKey=alexfariakof_despesas-python
+sonar.organization=alexfariakof
+
+# This is the name and version displayed in the SonarCloud UI.
+#sonar.projectName=despesas-python
+#sonar.projectVersion=1.0
+
+
+# Path is relative to the sonar-project.properties file. Replace "\" by "/" on Windows.
+#sonar.sources=.
+
+# Encoding of the source code. Default is default system encoding
+#sonar.sourceEncoding=UTF-8
