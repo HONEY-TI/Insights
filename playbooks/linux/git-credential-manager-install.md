@@ -1,18 +1,26 @@
-# 🔐 Instalar Git Credential Manager + Login GitHub para Todos os Usuários
+---
+name: git-credential-manager-install
+description: Instalação global do Git Credential Manager (GCM) com autenticação GitHub e suporte para JailKit
+---
+
+# 🔐 Instalação do Git Credential Manager + Integração GitHub
 
 ## 🎯 Objetivo
 
-Instalar globalmente:
+Este procedimento realiza a instalação e configuração global dos seguintes componentes:
 
-- Git
-- Git Credential Manager (GCM)
-- Integração com GitHub CLI (`gh`)
-- Suporte para autenticação persistente HTTPS
-- Disponível para todos os usuários do sistema e também dentro da JailKit
+- ✅ Git
+- ✅ Git Credential Manager (GCM)
+- ✅ GitHub CLI (`gh`)
+- ✅ Autenticação HTTPS persistente
+- ✅ Integração disponível para todos os usuários
+- ✅ Compatibilidade com ambientes JailKit
 
 ---
 
 # 🧱 1. Instalar Dependências
+
+Atualize os repositórios e instale os pacotes necessários:
 
 ```bash
 sudo apt update
@@ -22,66 +30,168 @@ sudo apt install -y \
     gh \
     curl \
     gpg \
-    pass
+    pass \
+    wget
+```
 
+---
 
-🧱 2. Instalar Git Credential Manager (GCM)
-Baixar última versão Linux
+# 📦 2. Instalar o Git Credential Manager (GCM)
+
+## 🔽 Definir versão
+
+```bash
 VERSION=2.6.1
+```
 
+## ⬇️ Baixar pacote oficial Linux
+
+```bash
 wget https://github.com/git-ecosystem/git-credential-manager/releases/download/v${VERSION}/gcm-linux_amd64.${VERSION}.deb
-Instalar
+```
+
+## ⚙️ Instalar pacote
+
+```bash
 sudo dpkg -i gcm-linux_amd64.${VERSION}.deb
-Corrigir dependências se necessário
+```
+
+## 🛠️ Corrigir dependências (caso necessário)
+
+```bash
 sudo apt --fix-broken install -y
-🧱 3. Configurar GCM Globalmente
-Configurar como helper padrão do Git
+```
+
+---
+
+# ⚙️ 3. Configurar o GCM Globalmente
+
+## 🔐 Definir o GCM como helper padrão do Git
+
+```bash
 sudo git config --system credential.helper manager
-Configurar provider GitHub
+```
+
+## ☁️ Configurar armazenamento seguro de credenciais
+
+```bash
 sudo git config --system credential.credentialStore secretservice
-🧱 4. Verificar Instalação
+```
+
+---
+
+# ✅ 4. Validar Instalação
+
+Verifique se o GCM foi instalado corretamente:
+
+```bash
 git credential-manager version
-🧱 5. Login GitHub para Cada Usuário
+```
 
-O login é individual por usuário.
+---
 
-Cada usuário deve executar:
+# 👤 5. Realizar Login no GitHub
 
+A autenticação é individual para cada usuário do sistema.
+
+Cada usuário deverá executar um dos comandos abaixo:
+
+## 🔑 Via GitHub CLI
+
+```bash
 gh auth login
+```
 
-ou:
+## 🔐 Via Git Credential Manager
 
+```bash
 git credential-manager github login
-🧱 6. Disponibilizar Dentro da JailKit
+```
 
-Copiar binários necessários:
+---
 
-Git
+# 🏗️ 6. Disponibilizar Binários Dentro do JailKit
+
+Copie os binários necessários para a jail:
+
+## 📁 Git
+
+```bash
 sudo jk_cp -j /home/jail $(which git)
-Git Credential Manager
+```
+
+## 📁 Git Credential Manager
+
+```bash
 sudo jk_cp -j /home/jail $(which git-credential-manager)
-GitHub CLI
+```
+
+## 📁 GitHub CLI
+
+```bash
 sudo jk_cp -j /home/jail $(which gh)
-🧱 7. Copiar Dependências Extras do GCM
+```
 
-O GCM usa bibliotecas .NET e dependências adicionais.
+---
 
-Copiar automaticamente:
+# 🔍 7. Copiar Dependências Extras do GCM
 
+O Git Credential Manager utiliza bibliotecas adicionais do .NET e dependências do sistema.
+
+## 📋 Listar dependências
+
+```bash
 sudo ldd $(which git-credential-manager)
+```
 
-Se faltar alguma dentro da jail:
+## ➕ Copiar bibliotecas ausentes para a jail
 
+Caso alguma biblioteca esteja faltando dentro da jail:
+
+```bash
 sudo jk_cp -j /home/jail /caminho/da/lib.so
-🧱 8. Inicializar Configuração Git no Skeleton
-Criar configuração global padrão
+```
+
+---
+
+# 🧬 8. Inicializar Configuração Padrão no Skeleton
+
+Crie uma configuração base para novos usuários:
+
+## 📂 Criar estrutura padrão
+
+```bash
 sudo mkdir -p /home/skel-jail/.config/git
-Configurar helper padrão
+```
+
+## ⚙️ Definir helper padrão do Git
+
+```bash
 sudo git config --file /home/skel-jail/.gitconfig credential.helper manager
-🧱 9. Testar
+```
 
-Dentro da jail:
+---
 
+# 🧪 9. Testar Funcionamento
+
+Dentro da jail, execute:
+
+```bash
 git clone https://github.com/usuario/repositorio.git
+```
 
-O GCM deverá abrir autenticação automaticamente.    
+## ✅ Resultado esperado
+
+O Git Credential Manager deverá iniciar automaticamente o fluxo de autenticação HTTPS do GitHub.
+
+---
+
+# 📌 Observações Importantes
+
+* 🔐 O login é armazenado por usuário.
+* 🧰 O `gh` e o `GCM` podem coexistir sem conflitos.
+* 🏢 A configuração via `--system` garante disponibilidade global.
+* 🧱 Em ambientes JailKit, algumas bibliotecas podem precisar ser copiadas manualmente.
+* 🚀 Recomendado para ambientes multiusuário e servidores DevOps.
+
+---
