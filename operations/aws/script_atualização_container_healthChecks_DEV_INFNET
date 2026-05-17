@@ -1,0 +1,18 @@
+#devops.dev.sh
+IMAGEM="alexfariakof/infnet-devops-project-dev"
+container_id=$(docker ps -q --filter "ancestor=$IMAGEM")
+image_id=$(docker images --format "{{.ID}}" "$IMAGEM")
+
+
+docker rm --force $container_id
+docker rmi --force $image_id
+
+echo "$DOCKERHUB_TOKEN" | docker login -u alexfariakof --password-stdin
+# Fazer pull da nova imagem
+echo "Fazendo pull da nova imagem: $IMAGEM"
+docker pull $IMAGEM
+
+
+# Iniciar um novo contêiner com a nova imagem
+echo "Iniciando um novo contêiner com a nova imagem..."
+docker run -d -p 42536:80 $IMAGEM
