@@ -1,0 +1,23 @@
+#dp-api.dev.sh
+
+IMAGEM="alexfariakof/api-despesas-backend-netcore-dev-img"
+# Remover todos os contêineres baseados na imagem
+docker ps -a --filter "ancestor=$IMAGEM" -q | xargs -r docker rm -f
+
+image_id=$(docker images --format "{{.ID}}" "$IMAGEM")
+docker rmi --force $image_id
+
+
+# Fazer pull da nova imagem
+echo "Fazendo pull da nova imagem: $IMAGEM..."
+docker pull $IMAGEM
+
+# Agora você pode iniciar um contêiner manualmente se desejar, por exemplo:
+docker run -d -p 42536:42536 $IMAGEM
+
+# Copiar o arquivo appsettings.json para dentro do container
+container_id=$(docker ps -q --filter "ancestor=$IMAGEM")
+docker cp /home/ec2-user/appsettings.json $container_id:/app
+
+# Reiniciar o contêiner
+docker restart $container_id
