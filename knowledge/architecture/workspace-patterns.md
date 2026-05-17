@@ -22,28 +22,37 @@ Definir padrão estrutural e comportamental do workspace `/insights` para garant
 ├── .git
 ├── .gitmodules
 ├── /knowledge
+│   ├── /architecture
+│   │   └── /linux-debian\ubuntu
+│   ├── /git
+│   │   ├── /recovery
+│   │   └── /submodules
+│   ├── git-ssh-generate.md
+│   └── integration-project.md
+│
 ├── /operations
-│   ├── /project-a
-│   │   └── .git
-│   └── /project-b
-│       └── .git
-
+│   ├── /linux
+│   │   └── .gitKepp
+│   └── /windows
+│       └── .gitKepp
+│
 ├── /playbooks
-│   ├── /project-a
-│   │   └── .git
-│   └── /project-b
-│       └── .git
+│   ├── /linux
+│   │   └── .gitKepp
+│   └── /windows
+│       └── .gitKepp
 │
 ├── /projects
 │   ├── /project-a
 │   │   └── .git
 │   └── /project-b
 │       └── .git
+│
 └── systems
-    ├── /project-a
-    │   └── .git
-    └── /project-b
-        └── .git
+│   ├── /linux
+│   │   └── .gitKepp
+│   └── /windows
+        └── .gitKepp
 
 ```
 
