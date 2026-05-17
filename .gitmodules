@@ -1,29 +1,23 @@
 [submodule "projects/prj-despesas-pessoais"]
 	path = projects/prj-despesas-pessoais
 	url = https://github.com/alexribeirofaria/prj-despesas-pessoais.git
-	branch = develop
 
 [submodule "projects/jail-container"]
 	path = projects/jail-container
 	url = https://github.com/alexribeirofaria/jail-container.git
-	branch = develop
 
 [submodule "projects/AI-Assistants"]
 	path = projects/AI-Assistants
 	url = https://github.com/alexribeirofaria/AI-Assistants.git
-	branch = develop
 
 [submodule "projects/prj-infnet-lite-streaming"]
 	path = projects/prj-infnet-lite-streaming
 	url = https://github.com/alexribeirofaria/prj-sistemas-web-.net-infnet.git
-    branch = develop
 	
 [submodule "projects/prj-pix-charge"]
 	path = projects/prj-pix-charge
 	url = https://github.com/alexribeirofaria/prj-PIXCharge.git
-	branch = develop
 
 [submodule "projects/prj-gestao"]
 	path = projects/prj-gestao
 	url = https://github.com/alexribeirofaria/prj-gestao.git
-	branch = develop
