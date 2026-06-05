@@ -8,9 +8,9 @@
 	url = https://github.com/alexribeirofaria/jail-container.git
 	branch = develop
 
-[submodule "projects/AI-Assistants"]
-	path = projects/AI-Assistants
-	url = https://github.com/alexribeirofaria/AI-Assistants.git
+[submodule "projects/app-ai-assistants"]
+	path = projects/app-ai-assistants
+	url = https://github.com/alexribeirofaria/app-ai-assistants.git
 	branch = develop
 
 [submodule "projects/prj-infnet-lite-streaming"]
