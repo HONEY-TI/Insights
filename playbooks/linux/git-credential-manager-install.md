@@ -78,6 +78,12 @@ sudo git config --system credential.helper manager
 sudo git config --system credential.credentialStore secretservice
 ```
 
+```bash
+git config --global user.name "Alex Ribeiro de Faria"
+git config --global user.email "135660435+alexribeirofaria@github.com"
+```
+
+
 ---
 
 # ✅ 4. Validar Instalação
