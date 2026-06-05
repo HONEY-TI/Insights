@@ -23,7 +23,7 @@
 	url = https://github.com/alexribeirofaria/prj-PIXCharge.git
 	branch = develop
 
-[submodule "projects/prj-gestao"]
-	path = projects/prj-gestao
-	url = https://github.com/alexribeirofaria/prj-gestao.git
+[submodule "projects/prj-gestao-empresarial"]
+	path = projects/prj-gestao-empresarial
+	url = https://github.com/alexribeirofaria/prj-gestao-empresarial.git
 	branch = develop
