@@ -30,7 +30,7 @@ set -euo pipefail
 # 🔐 CONFIGURAÇÕES
 # =========================================================
 
-readonly JAIL_PATH="/home/jail"
+readonly JAIL_PATH="/jail"
 readonly GROUP_NAME="jailusers"
 readonly DEFAULT_PASSWORD="toor"
 
@@ -51,7 +51,7 @@ fi
 # =========================================================
 # 📦 CONFIGURAÇÕES
 # =========================================================
-readonly SHARED_DOCUMENTS="$JAIL_PATH/documentos"
+readonly SHARED_DOCUMENTS="$JAIL_PATH/Documentos"
 readonly SHARED_WORKSPACE="$JAIL_PATH/workspace"
 readonly SHARED_VSCODE="$JAIL_PATH/.vscode"
 readonly SHARED_ANTIGRAVITY="$JAIL_PATH/.antigravity"
@@ -117,7 +117,7 @@ create_user() {
         -m \
         -c "$FULL_NAME" \
         -d "/home/$USERNAME" \
-        -s /usr/sbin/jk_chrootsh \
+        -s /usr/bin/bash \
         -U \
         -G "$GROUP_NAME" \
         "$USERNAME"

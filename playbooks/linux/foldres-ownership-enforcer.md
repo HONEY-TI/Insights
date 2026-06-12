@@ -8,26 +8,12 @@ description: Configuração de workspace compartilhado no Linux utilizando bindf
 
 ## 🎯 Objetivo
 
-Configurar a pasta:
+> Configurar ambiente isolado sem permissionamento de Agentes IA interagir com o SO :
 
-```bash
-/home/jail/workspace
-```
-
-Para que:
-
-- ✅ Qualquer usuário possa criar, alterar e remover arquivos
-- ✅ Todos os arquivos e pastas tenham sempre:
-  - Usuário (owner): `jail`
-  - Grupo: `jailusers`
-- ✅ Funcione também em subpastas
-- ✅ Novos arquivos herdem automaticamente as permissões corretas
-
----
 
 # 🚀 Solução Recomendada (bindfs)
 
-O Linux não permite forçar automaticamente o *owner* real de arquivos apenas com `chmod`/`setfacl`.
+O Linux não permite forçar automaticamente o *owner* real de arquivos apenas com `chmod`/`setfacl` nem herenaça recursiva sem alteração de permissionamento .
 
 A solução mais limpa e profissional é utilizar:
 
@@ -51,77 +37,72 @@ sudo apt update
 sudo apt install -y bindfs acl
 ```
 
----
-
-# 🛠️ Configuração Inicial
-
-## 1️⃣ Ajustar dono da pasta
-
-```bash
-sudo chown -R jail:jailusers /home/jail/workspace
-```
-
----
-
-## 2️⃣ Aplicar permissões corretas
-
-```bash
-sudo chmod 2775 /home/jail/workspace
-```
-
-### 📌 Explicação
-
-O `2` no início ativa o **setgid**, fazendo com que:
-
-- todos os novos arquivos
-- e subpastas
-
-herdem automaticamente o grupo:
-
-```bash
-jailusers
-```
-
----
-
-## 3️⃣ Aplicar em todas subpastas
-
-```bash
-sudo find /home/jail/workspace -type d -exec chmod 2775 {} \;
-```
-
----
-
-# 🔐 Configurar ACL padrão
-
-## Permissões automáticas para novos arquivos
-
-```bash
-sudo setfacl -R -m d:u:jail:rwx /home/jail/workspace
-sudo setfacl -R -m d:g:jailusers:rwx /home/jail/workspace
-```
-
----
-
-## Aplicar permissões atuais
-
-```bash
-sudo setfacl -R -m u:jail:rwx /home/jail/workspace
-sudo setfacl -R -m g:jailusers:rwx /home/jail/workspace
-```
-
----
-
 # 🔄 Montagem com bindfs
 
-## Montar forçando owner e grupo
+## Montar forçando owner e grupo manualmente
+
+> É necessário o uso de montagem usando serviços 
 
 ```bash
 sudo bindfs \
-  --force-user=jail \
-  --force-group=jailusers \
-  /home/jail/workspace \
-  /home/jail/workspace
+  --force-user=alexf \
+  --force-group=grp-alex \
+  /home/alexf/Documentos \
+  /home/alex/Documentos
+
+sudo bindfs \
+  --force-user=alex \
+  --force-group=grp-alex \
+  /home/alexf/.workspace  \
+  /home/alex/.workspace 
+
+SOURCE_DIR="/home/alex/.workspace"
+TARGET_DIR="/jail/workspace"
+
+[ -d "$SOURCE_DIR" ] || sudo mkdir -p "$SOURCE_DIR"
+[ -d "$TARGET_DIR" ] || sudo mkdir -p "$TARGET_DIR"
+
+sudo bindfs \
+    --force-user=root \
+    --force-group=jailusers \
+    "$SOURCE_DIR" \
+    "$TARGET_DIR"
+
+sudo bindfs \
+  --force-user=alex \
+  --force-group=vboxusers \
+  /home/alexf/.virtual-vms  \
+  /home/alex/.virtual-vms 
+
+
+# .vscode/extensions
+sudo mkdir -p /jail/.vscode/extensions
+sudo cp -r /home/alex/.workspace/.extensions/* /jail/.vscode/extensions/
+sudo chmod +t /jail/.vscode/extensions/
+
+# .antigravity/extensions
+sudo mkdir -p /jail/.antigravity/extensions
+sudo cp -r /home/alex/.workspace/.extensions/* /jail/.antigravity/extensions
+sudo chmod +t /jail/.antigravity/extensions
+
+# documentos do jail compartilhado com shared-documents
+SOURCE_DIR="/home/shared-documents"
+TARGET_DIR="/jail/Documentos"
+
+[ -d "$SOURCE_DIR" ] || sudo mkdir -p "$SOURCE_DIR"
+[ -d "$TARGET_DIR" ] || sudo mkdir -p "$TARGET_DIR"
+
+sudo bindfs \
+    --force-user=root \
+    --force-group=jailusers \
+    "$SOURCE_DIR" \
+    "$TARGET_DIR"
+
+# Criação de pasta home dos usuários 
+sudo mkdir -p /jail/home
+sudo chown root:jailusers /jail/home
+sudo chmod 770 /jail/home
+
 ```
 
 ---
@@ -138,13 +119,17 @@ Qualquer usuário poderá:
 Mas os arquivos sempre aparecerão como:
 
 ```bash
-owner  => jail
+owner  => root
 group  => jailusers
 ```
 
 ---
 
 # 💾 Persistir Após Reiniciar
+
+## Configurações possivés de estarem desatualiazdas
+>  **Uso de bindfs para perssitir recursivamente configurações de permissionamento e compartilhamento**
+
 
 ## Editar `/etc/fstab`
 

@@ -26,48 +26,35 @@ which jk_list
 
 * ### ⚙️ Criar pasta de configuração Jail
 ```bash
-sudo mkdir -p /home/jail
+sudo mkdir -p /jail
+sudo chown root:root /jail
+sudo chmod 700 /jail
 ```
+
 * ### ⚙️ Adicionar Programas na Jail 
 ```bash
-sudo jk_init -v -j jail basicshell  jk_chrootsh  uidbasics editors  python  jk_lsh  git
+sudo jk_init -v -j jail basicshell jk_lsh uidbasics editors  git
 ```
 
-* ### ⚙️ Copiar jk_chrootsh para Jail
-```bash
-sudo cp -r /usr/sbin/jk_chrootsh /home/jail/usr/sbin
-```
-
-* ### ⚙️ Remover Acesso de grupo root a Jail
-```bash
-sudo chmod 750 /home/jail  
-```
-
-* ### ⚙️ Desfazer proibição de Acesso de grupo root a Jail
-```bash
-sudo chown root:root /home/jail
-sudo chmod 755 /home/jail
-```
-
-## 🧰 4. Adicionar Mais Programas na Jail Compartilhada
+## 🧰 Adicionar Mais Programas na Jail Compartilhada
 
 ### 🟢 Node.js
 ```bash
-sudo jk_cp -j /home/jail $(which node)
+sudo jk_cp -j /jail $(which node)
 ```
 
 ### 📦 NPM
 ```bash
-sudo jk_cp -j /home/jail $(which npm)
+sudo jk_cp -j /jail $(which npm)
 ```
 
 ### ✍️ Nano
 ```bash
-sudo jk_cp -j /home/jail $(which nano)
+sudo jk_cp -j /jail $(which nano)
 ```
 ### ✍️ Git Credential usando gh 
 ```bash
-sudo jk_cp -j /home/jail $(which gh)
+sudo jk_cp -j /jail $(which gh)
 ```
 
 ```bash
@@ -81,23 +68,31 @@ git config --global user.email "135660435+alexribeirofaria@github.com"
 
 ### ✍️ Antigravity
 ```bash
-sudo jk_cp -j /home/jail $(which antigravity)
+sudo jk_cp -j /jail $(which antigravity)
 ```
 
 ### ✍️ vscode
 ```bash
-sudo jk_cp -j /home/jail $(which code)
+sudo jk_cp -j /jail $(which code)
 ```
 
 ### ✍️ Angular
 ```bash
-sudo jk_cp -j /home/jail $(which ng)
+sudo jk_cp -j /jail $(which ng)
+
+
+### ✍️ Docker
+```bash
+# copiar usando jailkit
+sudo jk_cp -j /jail $(which docker)
+
+
 ```
 
 ### ✍️ Pandoc Usuario pela IA para manipular arquivos .doc, odcx
 ```bash
 # copiar usando jailkit
-sudo jk_cp -j /home/jail $(which pandoc)
+sudo jk_cp -j /jail $(which pandoc)
 
 # ou copiar manualmente
 sudo cp -a $(which pandoc) /home/jail/$(which pandoc)

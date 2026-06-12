@@ -8,7 +8,7 @@ description: Ambiente isolado utilizando Docker com Linux para interação segur
 
 ## 📌 Visão geral
 
-Este guia descreve a instalação do Docker Engine e do Docker Compose (v2 oficial) no Ubuntu.
+Este guia descreve a instalação do Docker Engine e do Docker Compose (v2 oficial) no Ubuntu segundo IA.
 
 ---
 
