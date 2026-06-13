@@ -8,8 +8,6 @@ description: Configuração de workspace compartilhado no Linux utilizando bindf
 
 ## 🎯 Objetivo
 
-> Configurar ambiente isolado sem permissionamento de Agentes IA interagir com o SO :
-
 
 # 🚀 Solução Recomendada (bindfs)
 
@@ -41,20 +39,11 @@ sudo apt install -y bindfs acl
 
 ## Montar forçando owner e grupo manualmente
 
-> É necessário o uso de montagem usando serviços 
+> É necessário o uso de montagem usando serviços para persisntir após reboot 
 
 ```bash
-sudo bindfs \
-  --force-user=alexf \
-  --force-group=grp-alex \
-  /home/alexf/Documentos \
-  /home/alex/Documentos
-
-sudo bindfs \
-  --force-user=alex \
-  --force-group=grp-alex \
-  /home/alexf/.workspace  \
-  /home/alex/.workspace 
+sudo bindfs --force-user=alexf --force-group=grp-alex /home/alexf/Documentos /home/alex/Documentos
+sudo bindfs --force-user=alexf --force-group=grp-alex /home/alexf/.workspace  /home/alex/.workspace
 
 SOURCE_DIR="/home/alex/.workspace"
 TARGET_DIR="/jail/workspace"
@@ -73,36 +62,6 @@ sudo bindfs \
   --force-group=vboxusers \
   /home/alexf/.virtual-vms  \
   /home/alex/.virtual-vms 
-
-
-# .vscode/extensions
-sudo mkdir -p /jail/.vscode/extensions
-sudo cp -r /home/alex/.workspace/.extensions/* /jail/.vscode/extensions/
-sudo chmod +t /jail/.vscode/extensions/
-
-# .antigravity/extensions
-sudo mkdir -p /jail/.antigravity/extensions
-sudo cp -r /home/alex/.workspace/.extensions/* /jail/.antigravity/extensions
-sudo chmod +t /jail/.antigravity/extensions
-
-# documentos do jail compartilhado com shared-documents
-SOURCE_DIR="/home/shared-documents"
-TARGET_DIR="/jail/Documentos"
-
-[ -d "$SOURCE_DIR" ] || sudo mkdir -p "$SOURCE_DIR"
-[ -d "$TARGET_DIR" ] || sudo mkdir -p "$TARGET_DIR"
-
-sudo bindfs \
-    --force-user=root \
-    --force-group=jailusers \
-    "$SOURCE_DIR" \
-    "$TARGET_DIR"
-
-# Criação de pasta home dos usuários 
-sudo mkdir -p /jail/home
-sudo chown root:jailusers /jail/home
-sudo chmod 770 /jail/home
-
 ```
 
 ---
@@ -127,117 +86,85 @@ group  => jailusers
 
 # 💾 Persistir Após Reiniciar
 
-## Configurações possivés de estarem desatualiazdas
->  **Uso de bindfs para perssitir recursivamente configurações de permissionamento e compartilhamento**
+## Configuração ACL
+```bash 
+sudo setfacl -R -m u:alexf:rwx /home/alexf/.workspace
+sudo setfacl -R -m u:alexf:rwx /home/alexf/Documentos
+sudo setfacl -R -m u:alexf:rwx /home/alexf/.virtual-vms
+
+sudo setfacl -R -d -m u:alexf:rwx /home/alexf/.workspace
+sudo setfacl -R -d -m u:alexf:rwx /home/alexf/Documentos
+sudo setfacl -R -d -m u:alexf:rwx /home/alexf/.virtual-vms
+```
+
+## Criar arquivo `sudo nano /usr/local/bin/jail-mounts.sh` 
+
+```bash 
+#!/bin/bash
+
+USER_ORG="alexf"
+USER_DEST="alex"
+
+if [ ! -d "/home/$USER_DEST/.workspace" ]; then
+    mkdir -p "/home/$USER_DEST/.workspace"
+fi
+
+if [ ! -d "/home/$USER_DEST/Documentos" ]; then
+    mkdir -p "/home/$USER_DEST/Documentos"
+fi
+
+if [ ! -d "/home/$USER_DEST/.virtual-vms" ]; then
+    mkdir -p "/home/$USER_DEST/.virtual-vms"
+fi
 
 
-## Editar `/etc/fstab`
+mount_bindfs() {
+    local source="$1"    
+    local target="$2"
 
+    if ! mountpoint -q "$target"; then
+        bindfs \
+            --force-user="$USER_ORG" \
+            "$source" \
+            "$target"
+    fi
+}
+
+
+mount_bindfs "/home/$USER_ORG/.workspace " "/home/$USER_DEST/.workspace"
+mount_bindfs "/home/$USER_ORG/Documentos" "/home/$USER_DEST/Documentos"
+mount_bindfs "/home/$USER_ORG/.virtual-vms" "/home/$USER_DEST/.virtual-vms"
+
+```
+
+## Permissões: `sudo chmod +x /usr/local/bin/jail-mounts.sh` 
+
+## Criar Serviço `Serviço systemd` 
+```bash 
+[Unit]
+Description=Jail BindFS Mounts
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/jail-mounts.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+``` 
+
+## 🔁  Aplicar sem reiniciar
 ```bash
-sudo nano /etc/fstab
+sudo systemctl daemon-reload
+sudo systemctl enable jail-mounts.service
+sudo systemctl start jail-mounts.service
 ```
 
-Adicionar:
-
-```fstab
-bindfs#/home/jail/workspace /home/jail/workspace fuse force-user=jail,force-group=jailusers,create-for-user=jail,create-for-group=jailusers 0 0
-```
+## 🧪 Verifique: `systemctl status jail-mounts.service` 
 
 ---
 
-# 🔁 Aplicar sem reiniciar
-
-```bash
-sudo mount -a
-```
-
----
-
-# 🧪 Teste
-
-## Criar arquivo com outro usuário
-
-```bash
-touch /home/jail/workspace/teste.txt
-```
-
-Verificar:
-
-```bash
-ls -l /home/jail/workspace
-```
-
-Resultado esperado:
-
-```bash
--rw-r--r-- 1 jail jailusers teste.txt
-```
-
----
-
-# 🛡️ Observações Importantes
-
-## 📌 Todos os usuários precisam pertencer ao grupo:
-
-```bash
-jailusers
-```
-
-Adicionar usuário ao grupo:
-
-```bash
-sudo usermod -aG jailusers NOME_USUARIO
-```
-
-Depois:
-
-```bash
-newgrp jailusers
-```
-
-ou relogar sessão.
-
----
-
-# 🔥 Verificações úteis
-
-## Ver ACL
-
-```bash
-getfacl /home/jail/workspace
-```
-
----
-
-## Ver montagem bindfs
-
-```bash
-mount | grep bindfs
-```
-
----
-
-# 🧹 Remover configuração bindfs
-
-## Desmontar
-
-```bash
-sudo umount /home/jail/workspace
-```
-
----
-
-## Remover linha do fstab
-
-Editar:
-
-```bash
-sudo nano /etc/fstab
-```
-
-Remover a linha do `bindfs`.
-
----
 
 # ✅ Conclusão
 
