@@ -172,17 +172,74 @@ sudo setfacl -R -m d:g:$GROUP:rwx /home/$USER/.antigravity/
 
 ```bash
 # workspace
-sudo bindfs --force-user=$USER$--force-group=$GROUP  /home/$USER/workspace /home/$USER/workspace
+sudo bindfs --force-user=$USER_ORG --force-group=$GROUP  /home/$USER_ORG/workspace /home/$USER_DEST/workspace
 
 # documentos
-sudo bindfs --force-user=$USER$--force-group=$GROUP  /home/$USER/documentos /home/$USER/documentos
+sudo bindfs --force-user=$USER_ORG --force-group=$GROUP  /home/$USER_ORG/documentos /home/$USER_DEST/documentos
 
 # .vscode/extensions
-sudo bindfs --force-user=$USER$--force-group=$GROUP /home/$USER/.vscode/extensions/ /home/$USER/.vscode/extensions/
+sudo bindfs --force-user=$USER_ORG --force-group=$GROUP /home/$USER_ORG/.vscode/extensions/ /home/$USER_DEST/.vscode/extensions/
 
 # .antigravity/extensions
-sudo bindfs --force-user=$USER$--force-group=$GROUP  /home/$USER/.antigravity/ /home/$USER/.antigravity/
+sudo bindfs --force-user=$USER_ORG --force-group=$GROUP  /home/$USER_ORG/.antigravity/ /home/$USER_DEST/.antigravity/
 ```
+
+
+### Cirando serviço para persistir montagem após reboot
+```bash 
+#!/bin/bash
+
+USER_ORG="alexf"
+USER_DEST="alex"
+GROUP=$(id -gn "$USER_ORG")
+
+mkdir -p "/home/$USER_DEST/.workspace"
+mkdir -p "/home/$USER_DEST/Documentos"
+
+mount_bindfs() {
+    local source="$1"
+    local target="$2"
+
+    if ! mountpoint -q "$target"; then
+        bindfs \
+            --force-user="$USER_ORG" \
+            --force-group="$GROUP" \
+            "$source" \
+            "$target"
+    fi
+}
+
+``` 
+
+```bash 
+#sudo nano /etc/systemd/system/jail-mounts.service
+[Unit]
+Description=Jail BindFS Mounts
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/jail-mounts.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
+``` 
+
+```bash
+# Ative:
+
+sudo systemctl daemon-reload
+sudo systemctl enable jail-mounts.service
+sudo systemctl start jail-mounts.service
+```
+```bash
+# Verifique:
+
+systemctl status jail-mounts.service
+```
+
 
 ---
 
