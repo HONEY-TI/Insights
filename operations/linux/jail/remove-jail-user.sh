@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =========================================================
-# 🗑️ JailKit Shared User Remover 
+# 🗑️ JailKit Shared User Remover
 # =========================================================
 #
 # Uso:
@@ -25,171 +25,191 @@
 set -euo pipefail
 
 # =========================================================
-# 📦 CONFIGURAÇÕES
+# 🗑️ JailKit Shared User Remover (FIXED)
 # =========================================================
 
-readonly JAIL_PATH="/
-jail"
-
+readonly JAIL_PATH="/home/jail"
 USERNAME="${1:-}"
 
-readonly USER_HOME="$JAIL_PATH/home/$USERNAME"
-
 # =========================================================
-# 👑 VALIDAR ROOT
+# 🔐 VALIDAR ROOT
 # =========================================================
-
 validate_root() {
-    if [[ "${EUID:-0}" -ne 0 ]]; then
-        echo "❌ Execute com sudo."
+    [[ "${EUID:-0}" -eq 0 ]] || {
+        echo "❌ Execute com sudo/root."
         exit 1
-    fi
+    }
 }
 
 # =========================================================
-# 👤 VALIDAR PARÂMETRO
+# 👤 VALIDAR USERNAME
 # =========================================================
-
 validate_username() {
-    if [[ -z "$USERNAME" ]]; then
-        echo "❌ Informe o nome do usuário."
-        echo "Uso: sudo remove-jail-user.sh <username>"
+    [[ -n "$USERNAME" ]] || {
+        echo "❌ Informe o usuário."
+        echo "Uso: sudo remove-jail-user <username>"
         exit 1
-    fi
+    }
 }
 
 # =========================================================
-# 🔍 VALIDAR USUÁRIO
+# 🛑 FINALIZAR PROCESSOS
 # =========================================================
-
-validate_user_exists() {
-    if ! id "$USERNAME" &>/dev/null; then
-        echo "❌ Usuário '$USERNAME' não existe."
-        exit 1
-    fi
-}
-
-# =========================================================
-# 🛑 ENCERRAR PROCESSOS
-# =========================================================
-
 kill_user_processes() {
-    echo "🛑 Encerrando processos do usuário..."
-    pkill -u "$USERNAME" || true
+    echo "🛑 Encerrando processos..."
+    pkill -u "$USERNAME" 2>/dev/null || true
 }
 
 # =========================================================
-# 🔓 DESMONTAR SAFE (IMPORTANTE)
+# 🔓 DESMONTAR BIND MOUNTS
 # =========================================================
-
 safe_unmount() {
+
     local target="$1"
 
+    # evita erro se não existe
+    [[ -e "$target" ]] || return 0
+
+    # verifica mount real
     if mountpoint -q "$target"; then
-        echo "🔓 Desmontando: $target"
-        umount "$target" 2>/dev/null || umount -l "$target" || true
+
+        echo "🔓 Desmontando bindfs: $target"
+
+        umount "$target" 2>/dev/null || \
+        umount -l "$target" 2>/dev/null || \
+        echo "⚠️ Falha ao desmontar $target (talvez busy)"
     fi
 }
-
-# =========================================================
-# 🔓 DESMONTAR BIND MOUNTS (JAILKIT FIX)
-# =========================================================
 
 unmount_shared_folders() {
 
+    echo "🔓 Procurando mounts bindfs do usuário: $USERNAME"
 
+    # pega todos os mounts bindfs
+    mount | grep bindfs | awk '{print $3}' | while read -r mnt; do
 
-    local doc="$USER_HOME/Documentos"
-    local ws="$USER_HOME/workspace"
-    local vscode="$USER_HOME/.vscode"
-    local antigravity="$USER_HOME/.antigravity"
+        # só desmonta os que pertencem ao jail do usuário
+        if echo "$mnt" | grep -q "$USERNAME"; then
+            safe_unmount "$mnt"
+        fi
 
-    safe_unmount "$doc"
-    safe_unmount "$ws"
-    safe_unmount "$vscode"
-    safe_unmount "$antigravity"
+    done
 }
 
 # =========================================================
-# 🧹 REMOVER HOME DA JAIL 
+# 🧹 REMOVER HOME DA JAIL
 # =========================================================
-
 remove_jail_home() {
-
     local jail_home="$JAIL_PATH/home/$USERNAME"
 
-    if [[ -d "$jail_home" ]]; then
-        echo "🧹 Removendo home da jail: $jail_home"
-        rm -rf "$jail_home"
-    fi
+    echo "🧹 Removendo home da jail..."
+
+    rm -rf "$JAIL_PATH/home/$USERNAME"
 }
 
 # =========================================================
-# 🗑️ REMOVER USUÁRIO DO SISTEMA 
+# 🧹 REMOVER ENTRADA DA JAIL (passwd/group)
 # =========================================================
+remove_jail_entries() {
 
+    echo "🧹 Removendo entradas da jail..."
+
+    sed -i "/^$USERNAME:/d" "$JAIL_PATH/etc/passwd" 2>/dev/null || true
+    sed -i "/^$USERNAME:/d" "$JAIL_PATH/etc/group" 2>/dev/null || true
+}
+
+# =========================================================
+# 🧹 REMOVER CONFIG JK_CHROOTSH
+# =========================================================
+remove_jk_chrootsh_config() {
+
+    local config="/etc/jailkit/jk_chrootsh.ini"
+
+    [[ -f "$config" ]] || return 0
+
+    echo "🧹 Limpando jk_chrootsh..."
+
+    awk -v user="[/home/$USERNAME]" '
+    $0 == user { skip=1; next }
+    /^\[/ { skip=0 }
+    !skip { print }
+    ' "$config" > "${config}.tmp" && mv "${config}.tmp" "$config"
+}
+
+# =========================================================
+# 🗑️ REMOVER USUÁRIO DO SISTEMA
+# =========================================================
 remove_system_user() {
 
     echo "🗑️ Removendo usuário do sistema..."
 
-    userdel -r "$USERNAME" 2>/dev/null || userdel "$USERNAME" || true
+    userdel -r "$USERNAME" 2>/dev/null || userdel "$USERNAME" 2>/dev/null || true
 }
 
 # =========================================================
-# 👥 REMOVER GRUPO DO USUÁRIO (SE EXISTIR)
+# 👥 REMOVER GRUPOS
 # =========================================================
+remove_groups() {
 
-remove_user_group() {
+    echo "🧹 Removendo grupos..."
+
+    if getent group docker >/dev/null 2>&1; then
+        gpasswd -d "$USERNAME" docker 2>/dev/null || true
+    fi
 
     if getent group "$USERNAME" >/dev/null 2>&1; then
-        echo "🧹 Removendo grupo '$USERNAME'..."
-        groupdel "$USERNAME" || true
+        groupdel "$USERNAME" 2>/dev/null || true
     fi
+}
+# =========================================================
+# ❌ Remover usuário
+# =========================================================
+remove_jail_user_from_list_bind_mount() {
+    local file="/home/jail/etc/jail-users.list"
+
+    [[ -f "$file" ]] || return 0
+
+    grep -vx "$USERNAME" "$file" > "${file}.tmp"
+    mv "${file}.tmp" "$file"
 }
 
 # =========================================================
-# 🧹 LIMPEZA EXTRA JAILKIT (IMPORTANTE)
+# 🧹 LIMPEZA FINAL JAILKIT
 # =========================================================
+cleanup_jailkit() {
 
-cleanup_jailkit_references() {
-
-    echo "🧹 Limpando referências no jail..."
+    echo "🧹 Limpeza final da jail..."
 
     rm -rf "$JAIL_PATH/home/$USERNAME" 2>/dev/null || true
-
-    find "$JAIL_PATH" -name "*$USERNAME*" -type d -exec rm -rf {} + 2>/dev/null || true
 }
 
 # =========================================================
 # 🚀 EXECUÇÃO
 # =========================================================
-
 main() {
 
     validate_root
     validate_username
-    validate_user_exists
 
     kill_user_processes
-
     unmount_shared_folders
 
-    remove_jail_home
-
+    remove_jail_entries
+    remove_groups
     remove_system_user
-
-    remove_user_group
-
-    cleanup_jailkit_references
+    remove_jk_chrootsh_config
+    remove_jail_home
+    remove_jail_user_from_list_bind_mount
+    cleanup_jailkit
 
     echo ""
     echo "========================================="
     echo "✅ Usuário removido com sucesso"
     echo "========================================="
-    echo ""
     echo "👤 Usuário : $USERNAME"
     echo "🗑️ Jail    : $JAIL_PATH"
+    echo "========================================="
     echo ""
 }
 
-main
+main "$@"
