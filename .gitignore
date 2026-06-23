@@ -10,7 +10,8 @@
 .env
 .env.*
 *.env
-
+.claude/
+.blackbox/
 .envrc
 .direnv/
 .secrets/
