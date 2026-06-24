@@ -18,7 +18,7 @@
 secrets/
 vault/
 .vault/
-
+.claude/
 *.pem
 *.key
 *.crt
