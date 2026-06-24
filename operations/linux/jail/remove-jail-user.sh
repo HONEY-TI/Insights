@@ -161,6 +161,7 @@ remove_groups() {
         groupdel "$USERNAME" 2>/dev/null || true
     fi
 }
+
 # =========================================================
 # ❌ Remover usuário
 # =========================================================
@@ -169,8 +170,7 @@ remove_jail_user_from_list_bind_mount() {
 
     [[ -f "$file" ]] || return 0
 
-    grep -vx "$USERNAME" "$file" > "${file}.tmp"
-    mv "${file}.tmp" "$file"
+    sed -i "\|^${USERNAME}$|d" "$file"
 }
 
 # =========================================================
@@ -193,13 +193,14 @@ main() {
 
     kill_user_processes
     unmount_shared_folders
-
-    remove_jail_entries
-    remove_groups
+    
     remove_system_user
-    remove_jk_chrootsh_config
     remove_jail_home
+    remove_jail_entries
     remove_jail_user_from_list_bind_mount
+    remove_groups
+    remove_jk_chrootsh_config   
+    
     cleanup_jailkit
 
     echo ""
