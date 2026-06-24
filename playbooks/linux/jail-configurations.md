@@ -39,7 +39,7 @@ Este guia corrige problemas comuns em jail usando o Jailkit (Linux chroot/jail e
 
 #### ⚠️ Importante
 
-- `/proc` e `/dev` são essenciais para o funcionamento correto do jail.
+- `/proc` e `/dev` são essenciais para o funcionalsento correto do jail.
 - `/sys` é opcional e geralmente não recomendado.
 - Jail mal montado pode causar:
   - lentidão geral
