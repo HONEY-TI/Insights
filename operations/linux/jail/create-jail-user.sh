@@ -93,6 +93,7 @@ create_user() {
     local full_name="$(echo "${USERNAME%%-*}" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
 
     useradd \
+        -m \
         -c "$full_name" \
         -d "/home/$USERNAME" \
         -s /usr/bin/bash \
@@ -195,6 +196,30 @@ add_jail_user_to_list_persist_bind_mount() {
     fi
 }
 
+# =========================================================
+# ➕ Configurar git gh auth 
+# =========================================================
+
+configure_gh_auth_manual() {
+
+    local gh_dir="$USER_HOME/.config/gh"
+
+    mkdir -p "$gh_dir"
+
+    cat > "$gh_dir/hosts.yml" <<EOF
+github.com:
+    user: $USERNAME
+    oauth_token: PLACE_YOUR_TOKEN_HERE
+    git_protocol: https
+EOF
+
+    chown -R "$USERNAME:$GROUP_NAME" "$gh_dir"
+    chmod 770 "$USER_HOME/.config"
+    chmod 770 "$gh_dir"
+    chmod 660 "$gh_dir/hosts.yml"
+}
+
+
 
 # =========================================================
 # 🖥️ X11
@@ -216,11 +241,12 @@ main() {
     ensure_group_exists
     remove_existing_user
     create_user
+    configure_gh_auth_manual
     configure_jailkit
     configure_home
     create_shared_folder "$JAIL_PATH/Documentos" "$USER_HOME/Documentos"
     create_shared_folder "$JAIL_PATH/workspace" "$USER_HOME/workspace"
-    add_jail_user_to_list_persist_bind_mount    
+    add_jail_user_to_list_persist_bind_mount        
     configure_x11
     usermod -aG docker "$USERNAME"
     usermod -s /bin/bash "$USERNAME"
