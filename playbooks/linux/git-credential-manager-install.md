@@ -81,6 +81,10 @@ sudo git config --system credential.credentialStore secretservice
 ```bash
 git config --global user.name "Alex Ribeiro de Faria"
 git config --global user.email "135660435+alexribeirofaria@github.com"
+
+git config --system user.name "Alex Ribeiro de Faria"
+git config --system user.email "135660435+alexribeirofaria@github.com"
+
 ```
 
 
