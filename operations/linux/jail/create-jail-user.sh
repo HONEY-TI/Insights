@@ -248,6 +248,7 @@ main() {
     create_shared_folder "$JAIL_PATH/workspace" "$USER_HOME/workspace"
     add_jail_user_to_list_persist_bind_mount        
     configure_x11
+    usermod -aG users "$USERNAME"
     usermod -aG docker "$USERNAME"
     usermod -s /bin/bash "$USERNAME"
 
