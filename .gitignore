@@ -11,6 +11,7 @@
 .env.*
 *.env
 .claude/
+.claude
 .blackbox/
 .envrc
 .direnv/
@@ -18,7 +19,6 @@
 secrets/
 vault/
 .vault/
-.claude/
 *.pem
 *.key
 *.crt
