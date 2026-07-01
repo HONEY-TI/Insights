@@ -27,6 +27,8 @@
 	path = projects/prj-gestao-empresarial
 	url = https://github.com/alexribeirofaria/prj-gestao-empresarial.git
 	branch = develop
+	
 [submodule "projects/prj-estacio-rstudio-jupyter"]
 	path = projects/prj-estacio-rstudio-jupyter
 	url = https://github.com/alexribeirofaria/prj-estacio-rstudio-jupyter.git
+	branch = develop
