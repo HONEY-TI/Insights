@@ -1,46 +1,46 @@
-# <img src="https://www.eccobandeiras.com.br/image/cache/catalog/antigas/reino-unido-1111x740.jpg" width="32"> 🧠 Insights to Create a Mono Repo
+# <img src="https://images.icon-icons.com/2088/PNG/512/br_icon_128192.png" width="32"> 🧠 Insights to Create a Mono Repo
 
-**Portuguese version:** [README](../README.md)
+**Versão em inglês:** [README](./.github/README.md)
 
-## Central repository for knowledge, processes, and project-related materials.
+## Repositório central de conhecimento, processos e materiais de projetos.
 
-* ### This space centralizes information, ideas, and documentation from different projects.
+* ### Este espaço reúne informações, ideias e documentação de diferentes projetos.
 
-* ### Each project may have its own structure, without the need to follow a single standard.
+* ### Cada projeto pode ter sua própria estrutura, sem necessidade de seguir um padrão único.
 
 ---
 
-## 📝 Documentation and Standards
+## 📝 Documentação e Padrões
 
-#### Most documentation should prioritize simple, portable, and readable standards using primarily Markdown (`.md`), avoiding unnecessary HTML dependencies whenever possible, ensuring better integration with version control, review, and automation platforms.
+#### A maior parte da documentação deve priorizar padrões simples, portáveis e legíveis utilizando principalmente Markdown (`.md`), evitando ao máximo dependências desnecessárias de HTML, garantindo melhor integração com plataformas de versionamento, revisão e automação.
 
-#### Whenever possible, it is recommended to use structures compatible with Git ecosystems and collaborative platforms, allowing natural integration with:
+#### Sempre que possível, recomenda-se utilizar estruturas compatíveis com ecossistemas Git e plataformas colaborativas, permitindo integração natural com:
 - `Git Flow`;
 - `feature branches`;
 - `hotfix`;
 - `pull requests`;
 - `code reviews`;
-- `automated workflows`;
+- `workflows automatizados`;
 - `CI/CD pipelines`;
 - `templates`;
 - `hooks`;
-- `collaborative versioning`.
+- `versionamento colaborativo`.
 
-#### Documentation may continuously evolve as new practices, methodologies, and technologies emerge, including integration with:
-- Artificial Intelligence applied to development and operations;
-- AI-assisted automations;
-- AI-assisted DevOps;
+#### A documentação pode evoluir continuamente conforme novas práticas, metodologias e tecnologias surgirem, incluindo integração com:
+- Inteligência Artificial aplicada a desenvolvimento e operações;
+- Automações assistidas por IA;
+- DevOps assistido por IA;
 - Scrum;
 - Kanban;
 - ScrumBan;
-- hybrid and adaptive methodologies;
-- observability-driven and continuous automation processes.
+- metodologias híbridas e adaptativas;
+- processos orientados a observabilidade e automação contínua.
 
-#### The goal is to maintain a flexible, reusable, traceable, and collaborative ecosystem, allowing gradual adaptation without enforcing rigid dependency on a single methodology, tool, or operational workflow.
+#### O objetivo é manter um ecossistema flexível, reutilizável, rastreável e colaborativo, permitindo adaptação gradual sem impor dependência rígida de uma única metodologia, ferramenta ou fluxo operacional.
 
 ---
 
-## 📂 Structure
+## 📂 Estrutura
 
 ```bash
 /insights
@@ -56,6 +56,7 @@
 ├── /systems
 │   ├── project-a/
 │   └── .../
+
 │
 ├── /operations
 │   ├── project-a/
@@ -70,37 +71,38 @@
 │   └── .../
 │
 └── README.md
-```
+``` 
+
 
 ### 🖥️ systems
-System architectures, integrations, contracts, dependencies, lifecycle definitions, components, and behavioral mappings.
+Arquitetura de sistemas, integrações, contratos, dependências, definições de ciclo de vida, componentes e mapeamentos comportamentais.
 
 ### ⚙️ operations
-#### Operational procedures, observability, monitoring, troubleshooting, automations, and continuous delivery workflows (`Git Flow`, `CI/CD`, `TDD`, `E2E`, among others), including deployment, recovery, incident handling, and maintenance processes across local, development, containerized, and cloud environments, following standardized operational pipelines and workflows.
+#### Procedimentos operacionais, observabilidade, monitoramento, troubleshooting, automações e fluxos de entrega contínua (`Git Flow`, `CI/CD`, `TDD`, `E2E`, entre outros), incluindo deploy, recovery, tratamento de incidentes e processos de manutenção em ambientes locais, desenvolvimento, containers e nuvem, seguindo pipelines e esteiras operacionais padronizadas.
 
-#### Operations may follow different approaches depending on the context and requirements of each project; however, it is recommended to prioritize compatibility, reproducibility, and predictability across different operating systems (`Linux`, `Windows`, and `macOS`), reducing platform-specific dependencies whenever possible.
+#### As operações podem seguir diferentes abordagens conforme o contexto e necessidade de cada projeto, porém é recomendado priorizar compatibilidade, reprodutibilidade e previsibilidade entre diferentes sistemas operacionais (`Linux`, `Windows` e `macOS`), reduzindo dependências específicas de plataforma sempre que possível.
 
-#### Whenever applicable, it is recommended to consider:
-- Environment standardization;
-- Cross-platform automations;
-- Environment isolation and reproducibility;
-- Permission management;
-- Continuous integration;
-- Automated provisioning;
-- Operational validation;
-- Observability and traceability;
-- Rollback and recovery strategies;
-- Reusable operational documentation;
-- Resilient execution across multiple contexts and infrastructures.
-
+#### Sempre que aplicável, recomenda-se considerar:
+- Padronização de ambientes;
+- Automações cross-platform;
+- Isolamento e reprodução de ambientes;
+- Controle de permissões;
+- Integração contínua;
+- Provisionamento automatizado;
+- Validação operacional;
+- Observabilidade e rastreabilidade;
+- Estratégias de rollback e recovery;
+- Documentação operacional reutilizável;
+- Execução resiliente em múltiplos contextos e infraestruturas.
+ 
 ### 📘 playbooks
-#### Executable operational guides, runbooks, standardized procedures, response flows, and reusable step-by-step documentation.
+#### Guias operacionais executáveis, runbooks, procedimentos padronizados, fluxos de resposta e documentações passo a passo reutilizáveis.
 
 ### 📚 knowledge
-#### Knowledge base containing learnings, technical notes, references, analyses, recurring patterns, and supporting materials.
+#### Base de conhecimento contendo aprendizados, anotações técnicas, referências, análises, padrões recorrentes e materiais de apoio.
 
 ### 🧩 projects
-#### Independent projects with their own structures, potentially containing source code, documentation, automations, experiments, and project-specific materials.
+#### Projetos independentes com estruturas próprias, podendo conter códigos, documentações, automações, experimentações e materiais específicos.
 
 ### 🔧 .github
-#### Centralization of workflows, automations, templates, hooks, pipelines, and shared ecosystem configurations.
+#### Centralização de workflows, automações, templates, hooks, pipelines e configurações compartilhadas do ecossistema.
