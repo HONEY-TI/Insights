@@ -64,6 +64,11 @@ sudo bindfs \
   /home/alex/.virtual-vms 
 ```
 
+sudo bindfs \
+  --force-user=alex \
+  --force-group=alex \
+  /home/alex/workspace/helpers-repo/.claude  \
+  /home/alex/workspace/prj-despesas-pessoais 
 ---
 
 # ✅ Resultado

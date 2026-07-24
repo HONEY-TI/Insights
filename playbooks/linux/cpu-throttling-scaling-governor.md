@@ -14,6 +14,8 @@ com base em carga e consumo de energia.
 
 Principais governors:
 - powersave → economia de energia
+- ondemand → ajuste automático por carga
+- schedutil → moderno e dinâmico
 - performance → frequência máxima constante
 
 ---
@@ -37,7 +39,7 @@ sudo bash -c 'echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scalin
 
 ## 📦 Criar serviço
 ```bash
-sudo nano /etc/systemd/system/cpu-governor.service
+sudo nano /etc/systemd/system/cpu-performance.service
 ```
 ---
 
@@ -45,48 +47,27 @@ sudo nano /etc/systemd/system/cpu-governor.service
 ```bash
 [Unit]
 Description=Set CPU governor to performance
-After=power-profiles-daemon.service
 
 [Service]
-Type=idle
-ExecStart=/bin/bash -c 'echo schedutil | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
-RemainAfterExit=yes
+Type=oneshot
+ExecStart=/bin/sh -c 'echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
 
 [Install]
 WantedBy=multi-user.target
-
 ```
 ---
 
 ## ▶️ ATIVAR SERVIÇO
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable cpu-governor.service 
-sudo systemctl start cpu-governor.service 
+sudo systemctl enable cpu-performance.service
+sudo systemctl start cpu-performance.service
 ```
-
-## 🛠️ Persistir a configuração para todos os usuários
- Objetivo é permitir que qualquer usuário execute apenas o comando via sudo sem solicitar senha, persistendo a configuração ao fazer login.
- > Ciar um arquivo em `/etc/sudoers.d/` com uma regra específica.
- ```bash 
-sudo visudo -f /etc/sudoers.d/cpu-governor
-``` 
-> Adicionar ao conteuodo do arquivo `cpu-governor`
-``` bash
-ALL ALL=(root) NOPASSWD: /usr/bin/systemctl start cpu-governor.service
-```
-
-> Adicionar ao arquivo `/etc/bash.bashrc`
-```bash 
-alias cpu='cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
-sudo systemctl start cpu-governor.service 
-```
+---
 
 # 🧪 VERIFICAR STATUS
 ```bash
 cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-# ou 
-cpu 
 ```
 ---
 

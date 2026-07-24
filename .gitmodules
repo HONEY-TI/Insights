@@ -8,11 +8,6 @@
 	url = https://github.com/alexribeirofaria/jail-container.git
 	branch = develop
 
-[submodule "projects/app-ai-assistants"]
-	path = projects/app-ai-assistants
-	url = https://github.com/alexribeirofaria/app-ai-assistants.git
-	branch = develop
-
 [submodule "projects/prj-infnet-lite-streaming"]
 	path = projects/prj-infnet-lite-streaming
 	url = https://github.com/alexribeirofaria/prj-sistemas-web-.net-infnet.git
