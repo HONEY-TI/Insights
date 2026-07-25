@@ -1,7 +1,6 @@
----
+'---
 name: ownership-foldres-enforcer
 description: Configuração de workspace compartilhado no Linux utilizando bindfs, ACL e setgid para garantir que todos os arquivos e diretórios criados em /home/jail/workspace mantenham automaticamente o owner como 'jail' e o grupo como 'jailusers', independentemente do usuário que estiver manipulando os arquivos. Inclui instalação, configuração persistente via fstab, permissões herdadas, ACLs padrão, testes, troubleshooting e gerenciamento multiusuário.
-
 ---
 
 # 📁 Configuração de Workspace Compartilhado
@@ -39,7 +38,7 @@ sudo apt install -y bindfs acl
 
 ## Montar forçando owner e grupo manualmente
 
-> É necessário o uso de montagem usando serviços para persisntir após reboot 
+> É necessário o uso de montagem usando serviços para persisntir após reboot
 
 ```bash
 sudo bindfs --force-user=alexf --force-group=grp-alex /home/alexf/Documentos /home/alex/Documentos
@@ -61,14 +60,33 @@ sudo bindfs \
   --force-user=alex \
   --force-group=vboxusers \
   /home/alexf/.virtual-vms  \
-  /home/alex/.virtual-vms 
+  /home/alex/.virtual-vms
 ```
 
 sudo bindfs \
   --force-user=alex \
   --force-group=alex \
   /home/alex/workspace/helpers-repo/.claude  \
-  /home/alex/workspace/prj-despesas-pessoais 
+  /home/alex/workspace/prj-despesas-pessoais
+
+  sudo bindfs \
+  --force-user=alex \
+  --force-group=grp-alex \
+  /home/jail/home/alex/workspace/helpers-repo/.claude
+  /home/jail/home/alex/workspace/dev-persona-ai/.claude
+
+sudo bindfs \
+  --force-user=alex \
+  --force-group=grp-alex \
+  /home/jail/home/alex/workspace/helpers-repo/.claude \
+  /home/jail/home/alex/workspace/dev-persona-ai/.claude
+
+sudo bindfs \
+  --force-user=alex \
+  --force-group=grp-alex \
+  /home/jail/home/alex/workspace/helpers-repo/.blackbox \
+  /home/jail/home/alex/workspace/dev-persona-ai/.blackbox
+
 ---
 
 # ✅ Resultado
@@ -92,7 +110,7 @@ group  => jailusers
 # 💾 Persistir Após Reiniciar
 
 ## Configuração ACL
-```bash 
+```bash
 sudo setfacl -R -m u:alexf:rwx /home/alexf/.workspace
 sudo setfacl -R -m u:alexf:rwx /home/alexf/Documentos
 sudo setfacl -R -m u:alexf:rwx /home/alexf/.virtual-vms
@@ -102,9 +120,9 @@ sudo setfacl -R -d -m u:alexf:rwx /home/alexf/Documentos
 sudo setfacl -R -d -m u:alexf:rwx /home/alexf/.virtual-vms
 ```
 
-## Criar arquivo `sudo nano /usr/local/bin/jail-mounts.sh` 
+## Criar arquivo `sudo nano /usr/local/bin/jail-mounts.sh`
 
-```bash 
+```bash
 #!/bin/bash
 
 USER_ORG="alexf"
@@ -124,7 +142,7 @@ fi
 
 
 mount_bindfs() {
-    local source="$1"    
+    local source="$1"
     local target="$2"
 
     if ! mountpoint -q "$target"; then
@@ -142,10 +160,10 @@ mount_bindfs "/home/$USER_ORG/.virtual-vms" "/home/$USER_DEST/.virtual-vms"
 
 ```
 
-## Permissões: `sudo chmod +x /usr/local/bin/jail-mounts.sh` 
+## Permissões: `sudo chmod +x /usr/local/bin/jail-mounts.sh`
 
-## Criar Serviço `Serviço systemd` 
-```bash 
+## Criar Serviço `Serviço systemd`
+```bash
 [Unit]
 Description=Jail BindFS Mounts
 After=local-fs.target
@@ -157,7 +175,7 @@ RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
-``` 
+```
 
 ## 🔁  Aplicar sem reiniciar
 ```bash
@@ -166,7 +184,7 @@ sudo systemctl enable jail-mounts.service
 sudo systemctl start jail-mounts.service
 ```
 
-## 🧪 Verifique: `systemctl status jail-mounts.service` 
+## 🧪 Verifique: `systemctl status jail-mounts.service`
 
 ---
 
@@ -180,3 +198,4 @@ Esta configuração garante:
 - 📁 Herança automática de permissões
 - ⚡ Controle centralizado
 - 🛠️ Ambiente ideal para workspaces compartilhados
+'

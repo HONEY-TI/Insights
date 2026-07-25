@@ -85,14 +85,26 @@ unmount_shared_folders() {
 
     echo "🔓 Procurando mounts bindfs do usuário: $USERNAME"
 
-    # pega todos os mounts bindfs
-    mount | grep bindfs | awk '{print $3}' | while read -r mnt; do
+    # 🔧 FIX: com "set -e -o pipefail", se "grep bindfs" não encontrar
+    # nenhuma linha (exit code 1, ex: nenhum mount bindfs no momento),
+    # o pipeline inteiro derrubava o script e as etapas seguintes
+    # (remove_system_user, remove_jail_home, etc.) nunca rodavam —
+    # o que deixava o usuário "fantasma" no sistema (existindo, mas
+    # sem jail), fazendo o useradd falhar numa recriação futura.
+    # A linha abaixo garante que a ausência de mounts não seja tratada
+    # como erro fatal.
+    local mounts
+    mounts="$(mount 2>/dev/null | grep bindfs || true)"
 
-        # só desmonta os que pertencem ao jail do usuário
+    if [[ -z "$mounts" ]]; then
+        echo "ℹ️ Nenhum mount bindfs encontrado."
+        return 0
+    fi
+
+    echo "$mounts" | awk '{print $3}' | while read -r mnt; do
         if echo "$mnt" | grep -q "$USERNAME"; then
             safe_unmount "$mnt"
         fi
-
     done
 }
 
@@ -144,6 +156,17 @@ remove_system_user() {
     echo "🗑️ Removendo usuário do sistema..."
 
     userdel -r "$USERNAME" 2>/dev/null || userdel "$USERNAME" 2>/dev/null || true
+
+    # 🔧 FIX: confirma de fato que o usuário sumiu do sistema.
+    # Sem isso, uma falha silenciosa do userdel (ex: processo
+    # ainda travado, home em uso) deixava o usuário "fantasma"
+    # e a recriação subsequente falhava com "usuário já existe".
+    if id "$USERNAME" &>/dev/null; then
+        echo "❌ Falha ao remover o usuário '$USERNAME' do sistema."
+        echo "   Verifique processos/sessões ativas (quem, w, ps -u $USERNAME)"
+        echo "   e tente novamente."
+        exit 1
+    fi
 }
 
 # =========================================================
@@ -193,14 +216,14 @@ main() {
 
     kill_user_processes
     unmount_shared_folders
-    
+
     remove_system_user
     remove_jail_home
     remove_jail_entries
     remove_jail_user_from_list_bind_mount
     remove_groups
-    remove_jk_chrootsh_config   
-    
+    remove_jk_chrootsh_config
+
     cleanup_jailkit
 
     echo ""

@@ -5,9 +5,15 @@ description: Instalar JailKit e compartilhar Jail com novos usuário adicionados
 
 # 🎯 Objetivo - Configurações JailKit
 
-# 🔗 Relacionados
+---
 
-- [Configurações de Workspace Compartilhado](./foldres-ownership-enforcer.md)
+## 🔗 Relacionados
+
+* [Configurações de Workspace Compartilhado](./foldres-ownership-enforcer.md)
+* [create-jail-user](../../operations/linux/jail/create-jail-user.sh)
+* [remove-jail-user](../../operations/linux/jail/remove-jail-user.sh)
+* [jail-container-linux-configurartions](jail-container-linux-configurartions.md)
+---
 
 ## 🚀 1 . Instalar Jailkit
 
@@ -27,7 +33,7 @@ which jk_list
 
 * ### ⚙️ Adicionar Programas na Jail 
 ```bash
-sudo jk_init -v -j /home/jail basicshell jk_lsh uidbasics editors git xauth
+sudo jk_init -v -j /home/jail basicshell extendedshell jk_lsh uidbasics editors git xauth
 ```
 
 * ### 🧱 Correção de Jail Mal Montado (Jailkit)
@@ -39,6 +45,12 @@ Este guia corrige problemas comuns em jail usando o Jailkit (Linux chroot/jail e
 
 #### ⚠️ Importante
 
+Pra descobrir isso rapidinho no seu sistema:
+
+```bash
+ls -la /lib/libnsl.so.* /lib64/libnsl.so.* /lib/x86_64-linux-gnu/libnsl.so.* 2>&1
+ldconfig -p | grep libnss
+```
 - `/proc` e `/dev` são essenciais para o funcionalsento correto do jail.
 - `/sys` é opcional e geralmente não recomendado.
 - Jail mal montado pode causar:

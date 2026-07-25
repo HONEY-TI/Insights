@@ -3,8 +3,17 @@ name: jail-container-linux-configurations
 description: Ambiente isolado utilizando Docker com Linux para interação segura com agentes de IA, reduzindo riscos de acesso indevido ao sistema operacional, arquivos pessoais e configurações do host.
 ---
 
-
 # 🐳 Instalação do Docker + Docker Compose no Ubuntu
+
+---
+## 🔗 Relacionados
+
+* [Configurações de Workspace Compartilhado](./foldres-ownership-enforcer.md)
+* [create-jail-user](../../operations/linux/jail/create-jail-user.sh)
+* [remove-jail-user](../../operations/linux/jail/remove-jail-user.sh)
+* [jail-configurations](jail-configurations.md)
+
+---
 
 ## 📌 Visão geral
 
@@ -107,6 +116,22 @@ docker compose version
 ```
 
 ---
+
+# 📦 Step 10 — Caso haja necessidade de usar sudo dentro do jail 
+
+```bash
+cp /etc/sudoers /home/jail/etc/sudoers
+chmod 440 /home/jail/etc/sudoers
+chown root:root /home/jail/etc/sudoers
+usermod -aG sudo $USER
+```
+
+# 📦 Step 11 — Cirando configurações padrão para usuario Jail
+
+```bash
+
+```
+
 
 # ⚠️ IMPORTANTE
 
