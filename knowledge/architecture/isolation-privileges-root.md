@@ -56,37 +56,23 @@ sudo passwd -l root
 
 ### GDM (Ubuntu padrão):
 ```bash
-sudo nano /etc/gdm3/custom.conf
+sudo cp /etc/pam.d/gdm-password /etc/pam.d/gdm-password.bak
+sudo nano /etc/pam.d/gdm-password
+# coloca abaixo: `@include common-auth`
+auth    requisite    pam_succeed_if.so user != root
 ```
-
-### Adicionar:
-```bash
-[security]
-AllowRoot=false---
-```
-
 ### LightDM (se usado):
 
 ```bash
-sudo nano /etc/lightdm/lightdm.conf
-```
-
-### Adicionar:
-```bash
-allow-root=false
-``` 
-
----
-
-## 🚫 SSH root
-```bash
-PermitRootLogin no
+sudo nano /etc/pam.d/lightdm
+# coloca abaixo: `@include common-auth`
+auth    requisite    pam_succeed_if.so user != root
 ```
 
 # 👤 6. Usuário admin
 
-adduser admin
-usermod -aG sudo admin
+adduser sadmin
+usermod -aG sudo sadmin
 
 # 🔐 7. Bloqueio de sudo -i via sudoers
 ```bash
@@ -139,8 +125,10 @@ sudo apt install git
 # 🧱 10. Modelo avançado (whitelist)
 
 ```bash
-Cmnd_Alias SYSTEM = /usr/bin/apt, /usr/bin/systemctl, /usr/bin/docker
-%sudo ALL=(ALL) SYSTEM
+Cmnd_Alias SHELLS = /bin/bash, /bin/sh, /usr/bin/zsh, /usr/bin/su, \
+                     /usr/bin/sudo -i, /usr/bin/sudo -s, \
+                     /usr/bin/newgrp, /usr/bin/newgrp *
+%sudo ALL=(ALL) SYSTEM, ALL, !SHELLS
 ```
 
 # 📌 11. Conclusão
