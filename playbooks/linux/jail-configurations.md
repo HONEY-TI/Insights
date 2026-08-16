@@ -56,7 +56,7 @@ readonly JAIL_PATH="/home/jail"
 sudo mkdir -p "$JAIL_PATH/lib/x86_64-linux-gnu"
 
 for lib in $(ldconfig -p | grep -E 'libnsl|libnss' | awk '{print $NF}'); do
-    cp -v --preserve=links "$lib" "$JAIL_PATH/lib/x86_64-linux-gnu/"
+    sudo cp -v --preserve=links "$lib" "$JAIL_PATH/lib/x86_64-linux-gnu/"
 done
 
 # Depois roda ldconfig DENTRO da jail pra atualizar o cache
@@ -128,6 +128,9 @@ EOF
 ### ldconfig 
 ```bash
 sudo jk_cp -j /home/jail $(which ldconfig )
+sudo jk_cp -j /home/jail $(which flatpak )
+
+
 ```
 ### 🟢 Node.js
 ```bash
