@@ -1,0 +1,292 @@
+
+# =========================================================
+# ALIASES
+# =========================================================
+
+alias cls='clear'
+
+# =========================================================
+# EZA
+# =========================================================
+
+function ls() {
+    command eza \
+        -la \
+        --group \
+        --group-directories-first \
+        "$@"
+}
+
+alias ll='eza -l -h --group --icons'
+alias la='eza -la -hs --group'
+alias lt='eza --tree --level=2 --group'
+
+# =========================================================
+# UTILITÁRIOS
+# =========================================================
+
+alias py='python3'
+alias dual-audio='pactl load-module module-combine-sink sink_name=dual_audio'
+alias loca='ssh dev@186.202.57.100'
+alias docker-prune='docker builder prune -f'
+alias docker-sys-prune='docker system prune -f'
+
+# =========================================================
+# GIT
+# =========================================================
+
+parse_git_branch() {
+    local branch
+
+    branch="$(git branch --show-current 2>/dev/null)"
+
+    [ -n "$branch" ] && echo " ($branch)"
+}
+
+# =========================================================
+# CORES
+# =========================================================
+
+GREEN='\033[38;5;82m'
+RED='\033[38;5;196m'
+YELLOW='\033[38;5;220m'
+BLUE='\033[38;5;39m'
+CYAN='\033[38;5;51m'
+GRAY='\033[38;5;245m'
+WHITE='\033[97m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# =========================================================
+# DOCKER
+# =========================================================
+
+dps() {
+
+    clear
+
+    local running
+    local total
+    local stopped
+
+    running="$(docker ps -q | wc -l)"
+    total="$(docker ps -aq | wc -l)"
+    stopped=$((total - running))
+
+    echo -e "${BLUE}${BOLD}"
+
+    echo "╔══════════════════════════════════════════════════════════════════════════════╗"
+    printf "║ %-76s ║\n" "🐳 Docker Dashboard"
+    printf "║ %-76s ║\n" \
+        "🟢 Running: $running   🔴 Stopped: $stopped   📦 Total: $total"
+    echo "╚══════════════════════════════════════════════════════════════════════════════╝"
+
+    echo -e "${RESET}"
+
+    printf "${BOLD}%-3s %-25s %-22s %-18s %-35s${RESET}\n" \
+        "" "NAME" "STATUS" "PORTS" "IMAGE"
+
+    printf '─%.0s' {1..110}
+    echo
+
+    docker ps -a \
+        --format '{{.Names}}|{{.Status}}|{{.Ports}}|{{.Image}}' |
+    while IFS='|' read -r name status ports image
+    do
+
+        local icon
+
+        case "$status" in
+            Up*)
+                icon="${GREEN}🟢${RESET}"
+                ;;
+            Exited*)
+                icon="${RED}🔴${RESET}"
+                ;;
+            *)
+                icon="${YELLOW}🟡${RESET}"
+                ;;
+        esac
+
+        ports="$(
+            printf '%s' "$ports" |
+            sed \
+                -e 's/0.0.0.0://g' \
+                -e 's/\[::\]://g' \
+                -e 's/\/tcp//g'
+        )"
+
+        [ -z "$ports" ] && ports="-"
+
+        printf "%b %-25.25s %-22.22s %-18.18s %-35.35s\n" \
+            "$icon" \
+            "$name" \
+            "$status" \
+            "$ports" \
+            "$image"
+
+    done
+
+    printf '─%.0s' {1..110}
+    echo
+}
+
+di() {
+
+    clear
+
+    local total
+    total="$(docker images -q | wc -l)"
+
+    echo -e "${GREEN}${BOLD}"
+
+    echo "╔════════════════════════════════════════════════════════════════════════════════════════╗"
+    printf "║ %-84s ║\n" "🖼️  Docker Images"
+    printf "║ %-84s ║\n" "📦 Total Images: $total"
+    echo "╚════════════════════════════════════════════════════════════════════════════════════════╝"
+
+    echo -e "${RESET}"
+
+    printf "${BOLD}%-35s %-15s %-12s %-12s %-15s${RESET}\n" \
+        "REPOSITORY" "TAG" "SIZE" "CREATED" "IMAGE ID"
+
+    printf '─%.0s' {1..95}
+    echo
+
+    docker images \
+        --format '{{.Repository}}|{{.Tag}}|{{.Size}}|{{.CreatedSince}}|{{.ID}}' |
+    while IFS='|' read -r repo tag size created id
+    do
+
+        local icon
+
+        [ "$repo" = "<none>" ] && repo="dangling"
+
+        if [ "$tag" = "<none>" ]; then
+            icon="${YELLOW}⚠️ ${RESET}"
+            tag="none"
+        else
+            icon="${GREEN}🖼️ ${RESET}"
+        fi
+
+        printf "%b %-33.33s %-15.15s %-12.12s %-12.12s %-15.15s\n" \
+            "$icon" \
+            "$repo" \
+            "$tag" \
+            "$size" \
+            "$created" \
+            "$id"
+
+    done
+
+    printf '─%.0s' {1..95}
+    echo
+}
+
+dv() {
+
+    clear
+
+    local total
+    total="$(docker volume ls -q | wc -l)"
+
+    gum style \
+        --border rounded \
+        --border-foreground 51 \
+        --padding "1 3" \
+        "💾 Docker Volumes
+📦 Total: $total"
+
+    echo
+
+    printf "${BOLD}%-50s %-20s${RESET}\n" \
+        "VOLUME" "DRIVER"
+
+    printf '─%.0s' {1..80}
+    echo
+
+    docker volume ls \
+        --format '{{.Name}}|{{.Driver}}' |
+    while IFS='|' read -r name driver
+    do
+        printf "💾 %-48s %-20s\n" \
+            "$name" "$driver"
+    done
+}
+
+dn() {
+
+    clear
+
+    local total
+    total="$(docker network ls -q | wc -l)"
+
+    gum style \
+        --border rounded \
+        --border-foreground 51 \
+        --padding "1 3" \
+        "🌐 Docker Networks
+📦 Total: $total"
+
+    echo
+
+    printf "${BOLD}%-30s %-20s %-15s${RESET}\n" \
+        "NAME" "DRIVER" "SCOPE"
+
+    printf '─%.0s' {1..80}
+    echo
+
+    docker network ls \
+        --format '{{.Name}}|{{.Driver}}|{{.Scope}}' |
+    while IFS='|' read -r name driver scope
+    do
+        printf "🌐 %-28s %-20s %-15s\n" \
+            "$name" "$driver" "$scope"
+    done
+}
+
+dexec() {
+
+    local container
+
+    container="$(
+        docker ps --format '{{.Names}}' |
+        gum choose --header "Escolha o container"
+    )"
+
+    [ -z "$container" ] && return
+
+    docker exec -it "$container" bash \
+        || docker exec -it "$container" sh
+}
+
+dlog() {
+
+    local container
+
+    container="$(
+        docker ps --format '{{.Names}}' |
+        gum choose --header "Logs do container"
+    )"
+
+    [ -z "$container" ] && return
+
+    docker logs -f --tail 200 "$container"
+}
+
+drm() {
+
+    local container
+
+    container="$(
+        docker ps -a --format '{{.Names}}' |
+        gum choose --header "Remover container"
+    )"
+
+    [ -z "$container" ] && return
+
+    gum confirm "Remover $container?" || return
+
+    docker rm -f "$container"
+}
+
