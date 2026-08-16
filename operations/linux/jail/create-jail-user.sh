@@ -6,22 +6,24 @@
 # 🔥 IMPORTANTE: Esse script possui dependência direta de remove-jail-user
 #
 # Uso:
-# ./create-jail-user <user login>
+# ./create-user <user login>
 #
 # Exemplo:
-# ./create-jail-user codex-user
+# ./create-user codex-user
 #
 # 🔥 IMPORTANTE: Para scripts administrativos compartilhados no Linux, os locais mais adequados são:
 #   ✅ Local Ideal para scripts administrativos (sudo) /usr/local/sbin
-#   sudo cp -r create-jail-user /usr/local/sbin/create-jail-user
+#   sudo cp -r exit /usr/local/sbin/create-user
 #
 # ⚙️ Tornar script executável
-#  chmod +x create-jail-user
+#  chmod +x create-user
 #
 # ⚙️ Permitir execução apenas para root e grupo sudo
-#   sudo chown root:sudo create-jail-user
-#   sudo chmod 750 create-jail-user
+#   sudo chown root:sudo create-user
+#   sudo chmod 750 create-user
 #
+# Testat github connection
+# ssh -T git@github.com
 # =========================================================
 #
 # 🔒 AUTO-CHROOT NO TERMINAL
@@ -55,17 +57,14 @@ readonly JAIL_PATH="/home/jail"
 readonly GROUP_NAME="jailusers"
 readonly DEFAULT_PASSWORD="7004"
 
-# Caminho do arquivo de defaults do dconf (GNOME) — edite as chaves aqui
-readonly DCONF_DEFAULTS_FILE="/etc/dconf/db/local.d/00-jail-defaults"
-readonly DCONF_PROFILE_FILE="/etc/dconf/profile/user"
-readonly MONITORS_TEMPLATE="/etc/jailkit/skel/monitors.xml"
 
 # Wrapper + sudoers do auto-chroot
-readonly ENTER_JAIL_WRAPPER="/home/jail/usr/local/sbin/enter-jail"
+readonly ENTER_JAIL_WRAPPER="/usr/local/sbin/enter-jail"
 readonly SUDOERS_FILE="/etc/sudoers.d/jail-users"
 
 USERNAME="${1:-}"
-USER_HOME="$JAIL_PATH/home/$USERNAME"
+readonly USER_HOME="$JAIL_PATH/./home/$USERNAME"
+readonly EXTRA_HOST_GROUPS="docker,users,jailusers,gitssh"
 
 # =========================================================
 # 👑 VALIDAR ROOT
@@ -85,7 +84,7 @@ validate_root() {
 validate_username() {
     [[ -n "$USERNAME" ]] || {
         echo "❌ Informe o usuário."
-        echo "Uso: sudo create-jail-user <usuario>"
+        echo "Uso: sudo create-user <usuario>"
         exit 1
     }
 }
@@ -116,34 +115,78 @@ remove_existing_user() {
 }
 
 # =========================================================
-# 👤 CRIAR USUÁRIO
+# VALIDAR SKEL
 # =========================================================
 
+validate_skel() {
+    if [[ ! -d "$JAIL_SKEL" ]]; then
+        echo "❌ Diretório SKEL não existe:"
+        echo "   $JAIL_SKEL"
+        exit 1
+    fi
+
+    if [[ ! -r "$JAIL_SKEL" ]]; then
+        echo "❌ SKEL não pode ser lido:"
+        echo "   $JAIL_SKEL"
+        exit 1
+    fi
+
+    echo "🧸 SKEL encontrado:"
+    echo "   $JAIL_SKEL"
+    echo
+    echo "📦 Conteúdo do SKEL:"
+    find "$JAIL_SKEL" -maxdepth 2 -print | sort
+    echo
+}
+
+# =========================================================
+# 👤 CRIAR USUÁRIO
+# =========================================================
 create_user() {
     local full_name
+
     full_name="$(echo "${USERNAME%%-*}" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
+
+    echo "👤 Criando usuário:"
+    echo "   $USERNAME"
+    echo "🏠 HOME:"
+    echo "   $USER_HOME"
+    echo "🧸 SKEL:"
+    echo "   $JAIL_SKEL"
+    echo
 
     useradd \
         -m \
+        -k "$JAIL_SKEL" \
         -c "$full_name" \
         -d "$JAIL_PATH/./home/$USERNAME" \
-        -s /usr/bin/bash \
+        -s /usr/bin/zsh \
         -U \
-        -G "$GROUP_NAME" \
+        -G "$GROUP_NAME,$EXTRA_HOST_GROUPS" \
         "$USERNAME"
 
     echo "$USERNAME:$DEFAULT_PASSWORD" | chpasswd >/dev/null 2>&1
+    
+    echo "✅ Usuário criado usando SKEL."
 }
 
 # =========================================================
 # 🔒 CONFIGURAR JAILKIT
 # =========================================================
-
 configure_jailkit() {
-    echo "DEBUG: JAIL_PATH='$JAIL_PATH' USERNAME='$USERNAME'"
+    echo "🔒 Configurando JailKit..."
+
     jk_jailuser \
+        -m \
         -j "$JAIL_PATH" \
         "$USERNAME"
+
+    usermod \
+        -d "$JAIL_PATH/home/$USERNAME" \
+        -s "$JAIL_PATH/usr/bin/zsh" \
+        "$USERNAME"
+
+    echo "✅ JailKit configurado."
 }
 
 # =========================================================
@@ -200,7 +243,7 @@ setup_sudoers() {
     tmp="$(mktemp)"
 
     cat > "$tmp" <<EOF
-# Gerado por create-jail-user — não editar manualmente.
+# Gerado por create-user — não editar manualmente.
 %$GROUP_NAME ALL=(root) NOPASSWD: $ENTER_JAIL_WRAPPER *
 EOF
 
@@ -213,6 +256,81 @@ EOF
     fi
 
     rm -f "$tmp"
+}
+
+# =========================================================
+# GARANTIR ZSH DENTRO DA JAIL
+# =========================================================
+ensure_zsh_in_jail() {
+    if [[ -x "$JAIL_PATH/usr/bin/zsh" ]]; then
+        echo "✅ zsh já presente na jail."
+        return 0
+    fi
+
+    echo "🔎 Copiando zsh para dentro da jail..."
+
+    if command -v jk_cp >/dev/null 2>&1; then
+        if jk_cp -v -j "$JAIL_PATH" zsh 2>/dev/null; then
+            echo "✅ zsh copiado via jk_cp."
+        elif jk_cp -v -j "$JAIL_PATH" /usr/bin/zsh 2>/dev/null; then
+            echo "✅ zsh copiado via caminho direto."
+        else
+            echo "⚠️ Não foi possível copiar zsh automaticamente."
+        fi
+    else
+        echo "⚠️ jk_cp não encontrado."
+    fi
+
+    if [[ ! -x "$JAIL_PATH/usr/bin/zsh" ]]; then
+        echo "⚠️ zsh continua ausente dentro da jail."
+    fi
+}
+
+# =========================================================
+# GARANTIR GUM
+# =========================================================
+ensure_gum_installed() {
+    if ! command -v gum >/dev/null 2>&1; then
+        echo "🔎 'gum' não encontrado no host. Tentando instalar..."
+
+        if command -v apt >/dev/null 2>&1; then
+            (
+                mkdir -p /etc/apt/keyrings
+                curl -fsSL https://repo.charm.sh/apt/gpg.key \
+                    | gpg --dearmor -o /etc/apt/keyrings/charm.gpg 2>/dev/null
+
+                echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" \
+                    > /etc/apt/sources.list.d/charm.list
+
+                apt update -y >/dev/null 2>&1
+                apt install -y gum >/dev/null 2>&1
+            ) || true
+        fi
+    fi
+
+    if command -v gum >/dev/null 2>&1; then
+        echo "✅ gum disponível no host."
+    else
+        echo "⚠️ gum não está disponível no host."
+        return 0
+    fi
+
+    if [[ -x "$JAIL_PATH/usr/bin/gum" || -x "$JAIL_PATH/usr/local/bin/gum" ]]; then
+        echo "✅ gum já presente na jail."
+        return 0
+    fi
+
+    echo "🔎 Copiando gum para dentro da jail..."
+
+    if command -v jk_cp >/dev/null 2>&1; then
+        if jk_cp -v -j "$JAIL_PATH" gum 2>/dev/null; then
+            echo "✅ gum copiado via jk_cp."
+        elif jk_cp -v -j "$JAIL_PATH" "$(command -v gum)" 2>/dev/null; then
+            echo "✅ gum copiado via caminho direto."
+        else
+            echo "⚠️ Não foi possível copiar gum automaticamente."
+        fi
+    fi
 }
 
 # =========================================================
@@ -237,435 +355,60 @@ harden_home_root() {
 # =========================================================
 # 🏠 CONFIGURAR HOME DENTRO DA JAIL
 # =========================================================
-
 configure_home() {
+    local home="$JAIL_PATH/home/$USERNAME"
+
+    echo "🏠 Configurando HOME:"
+    echo "   $home"
 
     mkdir -p \
-        "$USER_HOME/.config" \
-        "$USER_HOME/.cache" \
-        "$USER_HOME/.local/share"
-
-    cat > "$USER_HOME/.profile" <<EOF
-if [ -n "\$DISPLAY" ]; then
-    export DISPLAY=\$DISPLAY
-fi
-export XAUTHORITY=\$HOME/.Xauthority
-
-[ -f ~/.bashrc ] && . ~/.bashrc
-EOF
-
-    # --- Cabeçalho com variáveis expandidas (heredoc SEM aspas) ---
-    cat >> "$USER_HOME/.bashrc" <<'EOF'
-# =========================================================
-# 🔒 Auto-chroot — gerado por create-jail-user, não editar
-# =========================================================
-# Só age em shells interativos com terminal (evita jailar a sessão
-# gráfica do GDM, que roda este mesmo .bashrc de forma não-interativa).
-if [[ \$- == *i* ]] && [[ -t 1 ]]; then
-    __jail_root="$JAIL_PATH"
-    __jail_user="$USERNAME"
-    __jail_dev_ino="\$(stat -c '%d:%i' "\$__jail_root" 2>/dev/null || true)"
-    __my_dev_ino="\$(stat -c '%d:%i' / 2>/dev/null || true)"
-
-    if [[ -n "\$__jail_dev_ino" ]] && [[ "\$__jail_dev_ino" != "\$__my_dev_ino" ]]; then
-        exec sudo $ENTER_JAIL_WRAPPER "\$__jail_user"
-    fi
-    unset __jail_root __jail_user __jail_dev_ino __my_dev_ino
-fi
-
-# --- Resto do .bashrc (aliases, PS1, dashboard docker etc.) ---
-
-export PATH=/usr/local/bin:/usr/bin:/bin
-alias cls='clear'
-
-
-# =========================
-# EZA AS LS
-# =========================
-
-function ls() {
-    command eza \
-	-la \
-       --group \
-        --group-directories-first \
-        "$@"
-}
-
-
-# =========================
-# EZA OVERRIDE
-# =========================
-
-# ls -l
-alias ll='eza -l -h --group --icons'
-
-# ls -la
-alias la='eza -la -hs --group'
-
-# tree
-alias lt='eza --tree --level=2 --group '
-
-alias py='python3'
-
-alias dual-audio='pactl load-module module-combine-sink sink_name=dual_audio'
-alias loca='ssh dev@186.202.57.100'
-alias docker-prune='docker builder prune -f'
-alias docker-sys-prune='docker system prune -f'
-alias cpu='cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
-
-# =========================
-# Colorized Path with Branch
-# =========================
-
-function parse_git_branch() {
-    local branch
-    branch=$(git branch --show-current 2>/dev/null)
-    [ -n "$branch" ] && echo " ($branch)"
-}
-
-PS1='\[\e[0;32m\][\[\e[1;34m\]\u\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]\[\e[1;33m\]$(parse_git_branch)\[\e[0m\]\[\e[0;32m\]]\[\e[0m\]\$'
-
-#==============================================================================
-# Docker Dashboard + Gum
-#==============================================================================
-GREEN="\e[38;5;82m"
-RED="\e[38;5;196m"
-YELLOW="\e[38;5;220m"
-BLUE="\e[38;5;39m"
-CYAN="\e[38;5;51m"
-GRAY="\e[38;5;245m"
-WHITE="\e[97m"
-BOLD="\e[1m"
-RESET="\e[0m"
-
-#==============================================================================
-# CONTAINERS
-#==============================================================================
-dps() {
-    clear
-    running=$(docker ps -q | wc -l)
-    total=$(docker ps -aq | wc -l)
-    stopped=$((total-running))
-
-    echo -e "${BLUE}${BOLD}"
-    echo "╔══════════════════════════════════════════════════════════════════════════════╗"
-    printf "║ %-76s ║\n" "🐳 Docker Dashboard"
-    printf "║ %-76s ║\n" "🟢 Running: $running   🔴 Stopped: $stopped   📦 Total: $total"
-    echo "╚══════════════════════════════════════════════════════════════════════════════╝"
-    echo -e "${RESET}"
-
-    printf "${BOLD}%-3s %-25s %-22s %-18s %-35s${RESET}\n" \
-    "" "NAME" "STATUS" "PORTS" "IMAGE"
-
-    printf '─%.0s' {1..110}
-    echo
-
-    docker ps -a \
-    --format "{{.Names}}|{{.Status}}|{{.Ports}}|{{.Image}}" |
-    while IFS="|" read -r name status ports image
-    do
-        # Status icon
-        if [[ "$status" == Up* ]]; then
-            icon="${GREEN}🟢${RESET}"
-        elif [[ "$status" == Exited* ]]; then
-            icon="${RED}🔴${RESET}"
-        else
-            icon="${YELLOW}🟡${RESET}"
-        fi
-
-        # Limita portas
-        ports=$(echo "$ports" |
-        sed \
-        -e 's/0.0.0.0://g' \
-        -e 's/\[::\]://g' \
-        -e 's/\/tcp//g')
-
-        # Se vazio
-        [[ -z "$ports" ]] && ports="-"
-
-        # Limita tamanho
-        name=$(printf "%.25s" "$name")
-        status=$(printf "%.22s" "$status")
-        ports=$(printf "%.18s" "$ports")
-        image=$(printf "%.35s" "$image")
-
-
-        printf "%b %-25s %-22s %-18s %-35s\n" \
-        "$icon" \
-        "$name" \
-        "$status" \
-        "$ports" \
-        "$image"
-    done
-
-    printf '─%.0s' {1..110}
-    echo
-}
-
-#==============================================================================
-# Docker Images Dashboard
-#==============================================================================
-di() {
-    clear
-    total=$(docker images -q | wc -l)
-    echo -e "${GREEN}${BOLD}"
-    echo "╔════════════════════════════════════════════════════════════════════════════════════════╗"
-    printf "║ %-84s ║\n" "🖼️  Docker Images"
-    printf "║ %-84s ║\n" "📦 Total Images: $total"
-    echo "╚════════════════════════════════════════════════════════════════════════════════════════╝"
-    echo -e "${RESET}"
-    printf "${BOLD}%-35s %-15s %-12s %-12s %-15s${RESET}\n" \
-    "REPOSITORY" "TAG" "SIZE" "CREATED" "IMAGE ID"
-    printf '─%.0s' {1..95}
-    echo
-    docker images \
-    --format "{{.Repository}}|{{.Tag}}|{{.Size}}|{{.CreatedSince}}|{{.ID}}" |
-
-    while IFS="|" read -r repo tag size created id
-    do
-        # Trata imagens sem nome
-        [[ "$repo" == "<none>" ]] && repo="dangling"
-
-        # Ícone
-        if [[ "$tag" == "<none>" ]]; then
-            icon="${YELLOW}⚠️ ${RESET}"
-            tag="none"
-        else
-            icon="${GREEN} 🖼️ ${RESET}"
-        fi
-
-        # Corta textos grandes
-        repo=$(printf "%.35s" "$repo")
-        tag=$(printf "%.15s" "$tag")
-        size=$(printf "%.12s" "$size")
-        created=$(printf "%.12s" "$created")
-        id=$(printf "%.12s" "$id")
-
-        printf "%b %-33s %-15s %-12s %-12s %-15s\n" \
-        "$icon " \
-        "$repo" \
-        "$tag" \
-        "$size" \
-        "$created" \
-        "$id"
-    done
-
-    printf '─%.0s' {1..95}
-    echo
-}
-
-#==============================================================================
-# VOLUMES
-#==============================================================================
-dv() {
-    clear
-    total=$(docker volume ls -q | wc -l)
-
-    gum style \
-    --border rounded \
-    --border-foreground 51 \
-    --padding "1 3" \
-    "💾 Docker Volumes
-    📦 Total: $total"
-
-    echo
-    printf "${BOLD}%-50s %-20s${RESET}\n" \
-    "VOLUME" "DRIVER"
-
-    printf '─%.0s' {1..80}
-    echo
-    docker volume ls \
-    --format "{{.Name}}|{{.Driver}}" |
-    while IFS="|" read name driver
-    do
-
-    printf "💾 %-48s %-20s\n" \
-    "$name" "$driver"
-
-    done
-}
-
-#==============================================================================
-# NETWORKS
-#==============================================================================
-dn() {
-    clear
-    total=$(docker network ls -q | wc -l)
-
-    gum style \
-    --border rounded \
-    --border-foreground 51 \
-    --padding "1 3" \
-    "🌐 Docker Networks
-    📦 Total: $total"
-
-    echo
-    printf "${BOLD}%-30s %-20s %-15s${RESET}\n" \
-    "NAME" "DRIVER" "SCOPE"
-    printf '─%.0s' {1..80}
-    echo
-
-    docker network ls \
-    --format "{{.Name}}|{{.Driver}}|{{.Scope}}" |
-    while IFS="|" read name driver scope
-    do
-
-    printf "🌐 %-28s %-20s %-15s\n" \
-    "$name" "$driver" "$scope"
-
-    done
-}
-
-#==============================================================================
-# INTERACTIVE COMMANDS WITH GUM
-#==============================================================================
-dexec() {
-    container=$(docker ps --format "{{.Names}}" | gum choose --header "Escolha o container")
-    [ -z "$container" ] && return
-
-    docker exec -it "$container" bash \
-    || docker exec -it "$container" sh
-}
-
-dlog() {
-    container=$(docker ps --format "{{.Names}}" | gum choose --header "Logs do container")
-
-    [ -z "$container" ] && return
-
-    docker logs -f --tail 200 "$container"
-}
-
-drm() {
-    container=$(docker ps -a --format "{{.Names}}" | gum choose --header "Remover container")
-    [ -z "$container" ] && return
-    gum confirm "Remover $container?" || return
-    docker rm -f "$container"
-}
-
-alias cpu='cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
-EOF
+        "$home/.config" \
+        "$home/.cache" \
+        "$home/.local/share"
 
     touch \
-        "$USER_HOME/.bash_logout" \
-        "$USER_HOME/.Xauthority"
+        "$home/.bash_logout" \
+        "$home/.Xauthority"
 
-    chown -R "$USERNAME:$GROUP_NAME" "$JAIL_PATH/home/$USERNAME"
+    chown -R "$USERNAME:$GROUP_NAME" "$home"
 
-    # 700 (não 750!): como todos os jailusers compartilham o mesmo grupo
-    # "$GROUP_NAME", um 750 daria a QUALQUER outro jailuser permissão de
-    # leitura/entrada nesse home só por estar no grupo. 700 restringe ao
-    # próprio dono.
-    chmod 700 "$JAIL_PATH/home/$USERNAME"
+    chmod 750 "$home"
 
     chmod 700 \
-        "$USER_HOME/.cache" \
-        "$USER_HOME/.config" \
-        "$USER_HOME/.local"
+        "$home/.cache" \
+        "$home/.config" \
+        "$home/.local"
 
-    chmod 600 "$USER_HOME/.Xauthority"
-}
+    chmod 600 "$home/.Xauthority"
 
-# =========================================================
-# 🎨 CONFIGURAR DESKTOP (GNOME/dconf — nível HOST, global)
-# =========================================================
-# Isso NÃO é por-usuário: o dconf é um banco global do sistema.
-# Rodar isso garante que o arquivo de defaults exista e esteja
-# aplicado, mas não precisa ser refeito a cada usuário — é
-# idempotente, então não tem problema rodar sempre.
-# =========================================================
-
-configure_dconf_defaults() {
-
-    if [[ ! -f "$DCONF_PROFILE_FILE" ]]; then
-        mkdir -p "$(dirname "$DCONF_PROFILE_FILE")"
-        cat > "$DCONF_PROFILE_FILE" <<'EOF'
-user-db:user
-system-db:local
-EOF
-    fi
-
-    mkdir -p "$(dirname "$DCONF_DEFAULTS_FILE")"
-
-    # Sempre sobrescreve com o conteúdo atual definido aqui
-    cat > "$DCONF_DEFAULTS_FILE" <<'EOF'
-[org/gnome/desktop/interface]
-clock-format='24h'
-clock-show-weekday=true
-clock-show-date=true
-clock-show-seconds=true
-clock-show-weekday-numbers=false
-color-scheme='prefer-dark'
-cursor-blink-time=1200
-gtk-theme='Yaru-dark'
-icon-theme='Yaru-dark'
-
-[org/gnome/desktop/datetime]
-automatic-timezone=true
-
-[org/gnome/desktop/wm/preferences]
-button-layout='appmenu:minimize,maximize,close'
-
-[org/gnome/shell/overrides]
-dynamic-workspaces=false
-edge-tiling=false
-
-[org/gnome/mutter/keybindings]
-toggle-tiled-left=@as []
-toggle-tiled-right=@as []
-
-[org/gnome/shell]
-favorite-apps=['google-chrome.desktop', 'code.desktop', 'antigravity.desktop', 'org.gnome.Ptyxis.desktop', 'firefox_firefox.desktop', 'org.gnome.Nautilus.desktop', 'snap-store_snap-store.desktop', 'libreoffice-calc.desktop']
-last-selected-power-profile='performance'
-welcome-dialog-last-shown-version='50.1'
-
-[org/gnome/shell/app-switcher]
-current-workspace-only=true
-
-[org/gnome/shell/extensions/dash-to-dock]
-isolate-monitors=false
-isolate-workspaces=true
-dash-max-icon-size=32
-
-[org/gnome/shell/extensions/ding]
-check-x11wayland=true
-keep-arranged=true
-
-[org/gnome/shell/extensions/tiling-assistant]
-focus-hint-color='rgb(211,70,21)'
-last-version-installed=54
-tiling-popup-all-workspace=false
-[org/gnome/desktop/wm/preferences]
-button-layout='appmenu:minimize,maximize,close'
-
-[org/gnome/shell/extensions/ding]
-check-x11wayland=true
-keep-arranged=true
-EOF
-
-    dconf update
+    echo "✅ HOME configurado."
 }
 
 # =========================================================
 # 📂 SHARED FOLDERS
 # =========================================================
-
 create_shared_folder() {
-
     local src="$1"
     local dst="$2"
+    local group="${3:-jailusers}"
 
     mkdir -p "$src"
     mkdir -p "$dst"
+
     chmod 2776 "$src" 2>/dev/null || true
 
     if ! mountpoint -q "$dst"; then
         bindfs \
-        --force-user="$USERNAME" \
-        --force-group="$USERNAME" \
-        "$src" \
-        "$dst"
+            --force-user="$USERNAME" \
+            --force-group="$group" \
+            "$src" \
+            "$dst"
     fi
-    chmod 2776 "$dst"
+
+    chmod 2776 "$dst" 2>/dev/null || true
+
+    echo "✅ Compartilhado:"
+    echo "   $dst"
 }
 
 # =========================================================
@@ -683,86 +426,270 @@ add_jail_user_to_list_persist_bind_mount() {
 }
 
 # =========================================================
-# ➕ Configurar git gh auth
+# MONITORES
 # =========================================================
 
-configure_gh_auth_manual() {
-
-    local gh_dir="$USER_HOME/.config/gh"
-
-    mkdir -p "$gh_dir"
-
-    cat > "$gh_dir/hosts.yml" <<EOF
-github.com:
-    user: $USERNAME
-    oauth_token: PLACE_YOUR_TOKEN_HERE
-    git_protocol: https
-EOF
-
-    chown -R "$USERNAME:$GROUP_NAME" "$gh_dir"
-    chmod 770 "$USER_HOME/.config"
-    chmod 770 "$gh_dir"
-    chmod 660 "$gh_dir/hosts.yml"
-}
-
-# =========================================================
-# 🖥️ CONFIGURAR MONITORES (template, sem depender de usuário)
-# =========================================================
+readonly MONITORS_TEMPLATE="/home/sadmin/.config/monitors.xml"
 
 configure_monitors() {
-
     if [[ ! -f "$MONITORS_TEMPLATE" ]]; then
-        echo "⚠️  $MONITORS_TEMPLATE não encontrado, pulando config de monitores."
+        echo "⚠️ $MONITORS_TEMPLATE não encontrado."
         return 0
     fi
 
-    cp "$MONITORS_TEMPLATE" "$USER_HOME/.config/monitors.xml"
+    mkdir -p "$USER_HOME/.config"
+
+    cp -f \
+        "$MONITORS_TEMPLATE" \
+        "$USER_HOME/.config/monitors.xml"
+
+    chown \
+        "$USERNAME:$USERNAME" \
+        "$USER_HOME/.config/monitors.xml"
+
+    chmod 644 "$USER_HOME/.config/monitors.xml"
+
+    echo "✅ Configuração de monitores copiada."
 }
 
 # =========================================================
-# 🖥️ X11
+# ATALHOS VS CODE
 # =========================================================
 
-configure_x11() {
-    command -v xhost >/dev/null 2>&1 || return 0
-    [ -n "${DISPLAY:-}" ] || return 0
-    xhost +SI:localuser:"$USERNAME" >/dev/null 2>&1 || true
+configure_user_vscode_shortcuts() {
+    local target_dir="$USER_HOME/.config/Code/User"
+
+    mkdir -p "$target_dir"
+
+    cat > "$target_dir/keybindings.json" <<'EOF'
+[
+  {
+    "key": "ctrl+'",
+    "command": "workbench.action.terminal.newWithProfile"
+  },
+  {
+    "key": "ctrl+c",
+    "command": "workbench.action.terminal.copySelection",
+    "when": "terminalTextSelectedInFocused || terminalFocus && terminalHasBeenCreated && terminalTextSelected || terminalFocus && terminalProcessSupported && terminalTextSelected || terminalFocus && terminalTextSelected && terminalTextSelectedInFocused || terminalHasBeenCreated && terminalTextSelected && terminalTextSelectedInFocused || terminalProcessSupported && terminalTextSelected && terminalTextSelectedInFocused"
+  },
+  {
+    "key": "ctrl+shift+c",
+    "command": "-workbench.action.terminal.copySelection",
+    "when": "terminalTextSelectedInFocused || terminalFocus && terminalHasBeenCreated && terminalTextSelected || terminalFocus && terminalProcessSupported && terminalTextSelected || terminalFocus && terminalTextSelected && terminalTextSelectedInFocused || terminalHasBeenCreated && terminalTextSelected && terminalTextSelectedInFocused || terminalProcessSupported && terminalTextSelected && terminalTextSelectedInFocused"
+  },
+  {
+    "key": "ctrl+v",
+    "command": "workbench.action.terminal.paste",
+    "when": "terminalFocus && terminalHasBeenCreated || terminalFocus && terminalProcessSupported"
+  },
+  {
+    "key": "ctrl+shift+v",
+    "command": "-workbench.action.terminal.paste",
+    "when": "terminalFocus && terminalHasBeenCreated || terminalFocus && terminalProcessSupported"
+  },
+  {
+    "key": "ctrl+shift+'",
+    "command": "workbench.action.terminal.openNativeConsole",
+    "when": "!isSessionsWindow && !terminalFocus"
+  },
+  {
+    "key": "ctrl+shift+c",
+    "command": "-workbench.action.terminal.openNativeConsole",
+    "when": "!isSessionsWindow && !terminalFocus"
+  }
+]
+EOF
+
+    chown -R "$USERNAME:$USERNAME" "$USER_HOME/.config/Code"
+
+    echo "✅ Atalhos do VS Code configurados."
 }
 
 # =========================================================
-# 🚀 EXECUÇÃO
+# GARANTIR GH (GITHUB CLI) DENTRO DA JAIL
+# =========================================================
+
+ensure_gh_in_jail() {
+    if [[ -x "$JAIL_PATH/usr/bin/gh" ]]; then
+        echo "✅ gh já presente na jail."
+        return 0
+    fi
+
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "⚠️ gh não encontrado no host, pulando."
+        return 0
+    fi
+
+    echo "🔎 Copiando gh para dentro da jail..."
+
+    if command -v jk_cp >/dev/null 2>&1; then
+        if jk_cp -v -j "$JAIL_PATH" gh 2>/dev/null; then
+            echo "✅ gh copiado via jk_cp."
+        elif jk_cp -v -j "$JAIL_PATH" "$(command -v gh)" 2>/dev/null; then
+            echo "✅ gh copiado via caminho direto."
+        else
+            echo "⚠️ Não foi possível copiar gh automaticamente."
+        fi
+    else
+        echo "⚠️ jk_cp não encontrado."
+    fi
+}
+
+# =========================================================
+# AUTENTICAR GH DENTRO DA JAIL (opcional, via arquivo de token)
+# =========================================================
+# O token NUNCA fica no código nem em variável de ambiente.
+# Ele é lido de um arquivo protegido no host:
+#
+#   /etc/jailkit/github_token
+#
+# Criação (uma única vez, feita manualmente):
+#
+#   sudo install -m 600 -o root -g root /dev/null /etc/jailkit/github_token
+#   sudo nano /etc/jailkit/github_token   # cole só o token, sem espaços/quebras extras
+#
+# =========================================================
+readonly GITHUB_TOKEN_FILE="$JAIL_PATH/etc/jailkit/github_token" 
+configure_gh_auth() {
+
+    if [[ ! -f "$GITHUB_TOKEN_FILE" ]]; then
+        echo "ℹ️ Arquivo de token não encontrado ($GITHUB_TOKEN_FILE), pulando gh auth login."
+        return 0
+    fi
+
+    if [[ ! -x "$JAIL_PATH/usr/bin/gh" ]]; then
+        echo "⚠️ gh não encontrado na jail, pulando autenticação."
+        return 0
+    fi
+
+    local perms
+    perms="$(stat -c '%a' "$GITHUB_TOKEN_FILE")"
+
+    if [[ "$perms" != "600" ]]; then
+        echo "⚠️ Permissões inseguras em $GITHUB_TOKEN_FILE (esperado 600, encontrado $perms)."
+        echo "   Corrija com: sudo chmod 600 $GITHUB_TOKEN_FILE"
+        return 1
+    fi
+
+    local token
+    token="$(<"$GITHUB_TOKEN_FILE")"
+    token="${token//$'\n'/}"
+
+    if [[ -z "$token" ]]; then
+        echo "⚠️ Arquivo de token está vazio, pulando."
+        return 0
+    fi
+
+    echo "🔑 Autenticando gh para '$USERNAME' dentro da jail..."
+
+    # HOME é exportado no bash do HOST antes do chroot;
+    # o chroot herda o ambiente do processo pai (sem precisar
+    # do binário 'env' dentro da jail).
+    if echo "$token" | HOME="/home/$USERNAME" chroot --userspec="$USERNAME:$USERNAME" "$JAIL_PATH" \
+        gh auth login --with-token
+    then
+        echo "✅ gh autenticado com sucesso dentro da jail."
+    else
+        echo "⚠️ gh auth falhou, seguindo sem autenticar."
+    fi
+
+    unset token
+}
+
+# =========================================================
+# GARANTIR REDE/DNS/TLS DENTRO DA JAIL
+# =========================================================
+ensure_network_in_jail() {
+
+    echo "🌐 Garantindo DNS/TLS dentro da jail..."
+
+    if [[ ! -s "$JAIL_PATH/etc/resolv.conf" ]]; then
+        cp /etc/resolv.conf "$JAIL_PATH/etc/resolv.conf"
+        echo "  ✅ resolv.conf copiado."
+    else
+        echo "  ✅ resolv.conf já presente."
+    fi
+
+    if [[ ! -f "$JAIL_PATH/etc/ssl/certs/ca-certificates.crt" ]]; then
+        mkdir -p "$JAIL_PATH/etc/ssl/certs"
+        cp /etc/ssl/certs/ca-certificates.crt "$JAIL_PATH/etc/ssl/certs/ca-certificates.crt"
+        echo "  ✅ ca-certificates.crt copiado."
+    else
+        echo "  ✅ ca-certificates.crt já presente."
+    fi
+
+    if [[ ! -f "$JAIL_PATH/etc/hosts" ]]; then
+        cp /etc/hosts "$JAIL_PATH/etc/hosts"
+        echo "  ✅ hosts copiado."
+    else
+        echo "  ✅ hosts já presente."
+    fi
+}
+
+# =========================================================
+# RESUMO
+# =========================================================
+
+show_summary() {
+    echo
+    echo "=============================================="
+    echo "✅ USUÁRIO ADMIN CRIADO"
+    echo "=============================================="
+    echo
+    echo "👤 Usuário : $USERNAME"    
+    echo "🏠 Jail    : $JAIL_PATH"
+    echo "🔒 Terminal entra automaticamente na jail via $ENTER_JAIL_WRAPPER"
+    echo ""
+    echo "🧸 SKEL    : $JAIL_SKEL"
+    echo "🛡️ Sudo    : NOPASSWD somente na jail"
+    echo "🐚 Shell   : zsh"
+    if [[ -f "$GITHUB_TOKEN_FILE" ]]; then
+        echo "🐙 gh auth : token lido de $GITHUB_TOKEN_FILE (ver log para status)"
+    else
+        echo "🐙 gh auth : não configurado (arquivo de token ausente)"
+    fi
+    echo "👥 Grupos  : $GROUP_NAME,$EXTRA_HOST_GROUPS"
+    echo "📦 Arquivos herdados do SKEL:"
+    echo "   $USER_HOME/.bashrc"
+    echo "   $USER_HOME/.profile"
+    echo "   $USER_HOME/.bash_logout"
+    echo "   $USER_HOME/.config/"
+    echo "   $USER_HOME/.gnome-template/defaults.conf"
+    echo "🔑 SSH     : herdado do SKEL"
+    echo "📁 Docs    : $USER_HOME/Documentos"
+    echo "📁 Work    : $USER_HOME/workspace"
+    echo
+    echo "=============================================="
+}
+
+# =========================================================
+# 🚀 MAIN
 # =========================================================
 
 main() {
 
     validate_root
     validate_username
+    validate_skel
     ensure_group_exists
-    setup_enter_jail_wrapper
-    setup_sudoers
-    harden_home_root
     remove_existing_user
     create_user
-    configure_gh_auth_manual
+    setup_sudoers
+    setup_enter_jail_wrapper
+    harden_home_root            
+    ensure_sudo_in_jail
+    ensure_zsh_in_jail
+    ensure_gum_installed
+    configure_home    
     configure_jailkit
-    configure_home
-    configure_dconf_defaults
+    ensure_network_in_jail
+    configure_gh_auth     
     create_shared_folder "$JAIL_PATH/Documentos" "$USER_HOME/Documentos"
     create_shared_folder "$JAIL_PATH/workspace" "$USER_HOME/workspace"
     add_jail_user_to_list_persist_bind_mount
     configure_monitors
-    #configure_x11
-    usermod -aG docker "$USERNAME"
-    usermod -s /bin/bash "$USERNAME"
-
-    echo ""
-    echo "======================================"
-    echo "✅ Usuário criado com sucesso"
-    echo "======================================"
-    echo "👤 Usuário : $USERNAME"
-    echo "🏠 Jail    : $JAIL_PATH"
-    echo "🔒 Terminal entra automaticamente na jail via $ENTER_JAIL_WRAPPER"
-    echo ""
+    configure_user_vscode_shortcuts
+    show_summary
 }
 
 main "$@"
