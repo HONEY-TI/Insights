@@ -50,6 +50,17 @@ Pra descobrir isso rapidinho no seu sistema:
 ```bash
 ls -la /lib/libnsl.so.* /lib64/libnsl.so.* /lib/x86_64-linux-gnu/libnsl.so.* 2>&1
 ldconfig -p | grep libnss
+readonly JAIL_PATH="/home/jail"
+
+
+sudo mkdir -p "$JAIL_PATH/lib/x86_64-linux-gnu"
+
+for lib in $(ldconfig -p | grep -E 'libnsl|libnss' | awk '{print $NF}'); do
+    cp -v --preserve=links "$lib" "$JAIL_PATH/lib/x86_64-linux-gnu/"
+done
+
+# Depois roda ldconfig DENTRO da jail pra atualizar o cache
+chroot "$JAIL_PATH" ldconfig
 ```
 - `/proc` e `/dev` são essenciais para o funcionalsento correto do jail.
 - `/sys` é opcional e geralmente não recomendado.
@@ -113,6 +124,11 @@ EOF
 
 ## 🧰 Adicionar Mais Programas na Jail Compartilhada
 
+
+### ldconfig 
+```bash
+sudo jk_cp -j /home/jail $(which ldconfig )
+```
 ### 🟢 Node.js
 ```bash
 sudo jk_cp -j /home/jail $(which node)

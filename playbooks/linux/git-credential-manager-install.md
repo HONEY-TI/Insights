@@ -85,6 +85,14 @@ git config --global user.email "135660435+alexribeirofaria@github.com"
 git config --system user.name "Alex Ribeiro de Faria"
 git config --system user.email "135660435+alexribeirofaria@github.com"
 
+                                                                                                                                                 
+
+origin  git@github.com:alexribeirofaria/Insights.git (fetch)
+origin  git@gitlab.com:alexfariakof/insights.git (push)
+
+git remote set-url --add --push origin git@github.com:alexribeirofaria/Insights.git 
+git remote set-url --add --push origin git@gitlab.com:alexfariakof/insights.git
+git remote -v                                                                  
 ```
 
 
