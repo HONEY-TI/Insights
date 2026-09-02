@@ -31,3 +31,6 @@
 	path = projects/app-ai-assistants
 	url = https://github.com/alexribeirofaria/app-ai-assistants.git
 	branch = develop
+[submodule ".ai"]
+	path = .ai
+	url = git@github.com:HONEY-TI/.ai.git
