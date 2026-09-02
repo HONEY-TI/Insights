@@ -92,6 +92,9 @@ origin  git@gitlab.com:alexfariakof/insights.git (push)
 
 git remote set-url --add --push origin git@github.com:alexribeirofaria/Insights.git 
 git remote set-url --add --push origin git@gitlab.com:alexfariakof/insights.git
+
+git remote set-url --add --push origin git@github.com:HONEY-TI/dev-persona-ai.git
+git remote set-url --add --push origin git@gitlab.com:alexfariakof/dev-persona-ai.git
 git remote -v                                                                  
 ```
 
