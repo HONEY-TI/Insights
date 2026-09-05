@@ -5,7 +5,7 @@ title: "PR(#13)-devcontainer and skelluser"
 branch: feature/devcontainer-and-skelluser
 base: main
 extends: feature-01-devcontainer-and-skelluser
-status: open
+status: merged
 ---
 
 ## 📋 Descrição
