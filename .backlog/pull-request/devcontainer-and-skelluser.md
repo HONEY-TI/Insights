@@ -16,8 +16,10 @@ Feature relacionada: `.backlog/features/feature-01-devcontainer-and-skelluser.md
 
 ## 📊 Estatísticas
 
-- Commits de conteúdo: 2
+- Commits: 4 (inclui o commit inicial vazio e o commit de documentação)
 - Arquivos alterados: 20
+- Linhas adicionadas: 1.454
+- Linhas removidas: 77
 - Branch base: `main`
 
 ## 📦 Repositórios/branches atualizados
