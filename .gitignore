@@ -71,7 +71,6 @@ ehthumbs.db
 # ================================
 # IDE / EDITORS
 # ================================
-.vscode/
 .idea/
 .vs/
 
@@ -377,3 +376,14 @@ backups/
 # END
 # ================================
 TODO*
+
+# JetBrains Rider
+*.sln.iml
+**/.Trash*
+**/tmp/
+**/.blackbox/
+**/.claude/
+**/.codex/
+**/.openclaude/
+*.env
+.ai/

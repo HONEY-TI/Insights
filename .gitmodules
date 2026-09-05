@@ -26,7 +26,7 @@
 [submodule "projects/prj-estacio-rstudio-jupyter"]
 	path = projects/prj-estacio-rstudio-jupyter
 	url = https://github.com/alexribeirofaria/prj-estacio-rstudio-jupyter.git
-	branch = develop
+	branch = main
 [submodule "projects/app-ai-assistants"]
 	path = projects/app-ai-assistants
 	url = https://github.com/alexribeirofaria/app-ai-assistants.git
@@ -34,3 +34,4 @@
 [submodule ".ai"]
 	path = .ai
 	url = git@github.com:HONEY-TI/.ai.git
+	branch = main

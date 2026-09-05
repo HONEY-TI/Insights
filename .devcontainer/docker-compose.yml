@@ -1,0 +1,52 @@
+services:
+  app:
+    container_name: insights-devcontainer
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      SSH_AUTH_SOCK: /tmp/ssh-agent.sock #ssh -T github-alexfaria/ssh -T gitlab-alexfaria
+    env_file:
+      - .env
+    volumes:
+      - ../:/workspace:cached
+      - vscode-extensions:/home/node/.vscode-server/extensions
+
+    ports:
+      - 3000:3000
+      - 4200:4200
+      - 18789:18789
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
+    security_opt:
+      - apparmor=unconfined
+      - seccomp:unconfined
+    command: sleep infinity
+    #entrypoint: /usr/local/bin/docker-entrypoint.sh
+    networks:
+      - helper-network
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+          cpus: "2"
+        reservations:
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+volumes:
+  vscode-extensions:
+    name:   vscode-extensions
+    
+networks:
+  helper-network:
+    name: helper-network
+    driver: bridge
