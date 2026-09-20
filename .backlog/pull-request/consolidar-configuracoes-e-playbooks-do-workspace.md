@@ -5,7 +5,7 @@ title: "PR(#14)-Consolidar Configurações e Playbooks do Workspace"
 branch: feature/consolidar-configuracoes-e-playbooks-do-workspace
 base: main
 extends: feature-02-consolidar-configuracoes-e-playbooks-do-workspace
-status: open
+status: merged
 ---
 
 ## 📋 Descrição
