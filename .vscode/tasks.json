@@ -4,7 +4,7 @@
         {
             "label": "Update Submodules",
             "type": "shell",
-            "command": "git submodule sync --recursive && git submodule update --remote --merge --recursive",
+            "command": "if [ -f .git/config.lock ]; then rm -f .git/config.lock; fi && git submodule sync --recursive && git submodule update --init --remote --force .ai",
             "problemMatcher": [],
             "runOptions": {
                 "runOn": "folderOpen"
