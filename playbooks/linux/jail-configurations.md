@@ -229,14 +229,127 @@ sudo bindfs --force-user=$USER_ORG --force-group=$GROUP  /home/$USER_ORG/workspa
 sudo bindfs --force-user=$USER_ORG --force-group=$GROUP  /home/$USER_ORG/documentos /home/$USER_DEST/documentos
 ```
 
-### Cirando serviço para persistir montagem após reboot
+### Confiugruar /etc/fuse.conf 
+```bash 
+# The file /etc/fuse.conf allows for the following parameters:
+#
+# user_allow_other - Using the allow_other mount option works fine as root, but
+# in order to have it work as a regular user, you need to set user_allow_other
+# in /etc/fuse.conf as well. This option allows non-root users to use the
+# allow_other option. You need allow_other if you want users other than the
+# owner of a mounted fuse to access it. This option must appear on a line by
+# itself. There is no value; just the presence of the option activates it.
+
+user_allow_other
+
+
+# mount_max = n - this option sets the maximum number of mounts.
+# It must be typed exactly as shown (with a single space before and after the
+# equals sign).
+
+#mount_max = 1000
+
+```
+
+### Cirando serviço para persistir montagem após reboot v1 `/usr/local/bin/jail-mounts.sh`
+```bash 
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+USER_ORG="sadmin"
+USER_JAIL="jail"
+
+JAIL_USERS_FILE="/home/${USER_JAIL}/etc/jail-users.list"
+DEFAULT_GROUP="jailusers"
+
+SOURCE_WORKSPACE="/home/${USER_ORG}/workspace"
+TARGET_WORKSPACE="/home/${USER_JAIL}/workspace"
+
+SOURCE_DOWNLOADS="/home/shared-documents/Downloads"
+TARGET_DOWNLOADS="/home/${USER_JAIL}/Downloads"
+
+
+SOURCE_DOCUMENTS="/home/shared-documents"
+TARGET_DOCUMENTS="/home/${USER_JAIL}/Documentos"
+
+SOURCE_WORKSPACE_JAIL="/home/${USER_JAIL}/workspace"
+SOURCE_DOCUMENTS_JAIL="/home/${USER_JAIL}/Documentos"
+SOURCE_DOWNLOADS_JAIL="/home/${USER_JAIL}/Downloads"
+
+mount_bindfs() {
+    local source="$1"
+    local target="$2"
+    local force_user="${3:-$USER_ORG}"
+    local force_group="${4:-$DEFAULT_GROUP}"
+
+    if [ ! -d "$source" ]; then
+        echo "ERRO: origem não existe: $source"
+        return 1
+    fi
+
+    mkdir -p "$target"
+
+    if ! mountpoint -q "$target"; then
+        echo "Montando:"
+        echo "  Origem : $source"
+        echo "  Destino: $target"
+        echo "  Usuario: $force_user  Grupo: $force_group"
+
+        bindfs \
+            --force-user="$force_user" \
+            --force-group="$force_group" \
+            "$source" \
+            "$target"
+    else
+        echo "Já montado: $target"
+    fi
+}
+
+# Mounts fixos (sempre com USER_ORG)
+mount_bindfs "$SOURCE_WORKSPACE" "$TARGET_WORKSPACE" 
+mount_bindfs "$SOURCE_DOCUMENTS" "$TARGET_DOCUMENTS" "root" "users"
+mount_bindfs "$SOURCE_DOWNLOADS" "$TARGET_DOWNLOADS" "root" "users"
+mount_bindfs "/home/sadmin/Downloads" "/home/shared-documents/Downloads" "sadmin" "users"
+ 
+# Mounts dinâmicos por usuário dentro da jaula
+if [ ! -f "$JAIL_USERS_FILE" ]; then
+    echo "ERRO: lista de usuários não encontrada: $JAIL_USERS_FILE"
+    exit 1
+fi
+
+while IFS= read -r USER_DEST_JAIL || [ -n "$USER_DEST_JAIL" ]; do
+    [ -z "$USER_DEST_JAIL" ] && continue
+    [[ "$USER_DEST_JAIL" =~ ^# ]] && continue
+
+    TARGET_WORKSPACE_JAIL="/home/${USER_JAIL}/home/${USER_DEST_JAIL}/workspace" 
+    TARGET_DOCUMENTS_JAIL="/home/${USER_JAIL}/home/${USER_DEST_JAIL}/Documentos" 
+    TARGET_DOWNLOADS_JAIL="/home/${USER_JAIL}/home/${USER_DEST_JAIL}/Downloads" 
+
+
+    echo "===== Processando usuário jail: $USER_DEST_JAIL ====="
+
+    mount_bindfs "$SOURCE_WORKSPACE_JAIL" "$TARGET_WORKSPACE_JAIL" "$USER_DEST_JAIL" 
+    mount_bindfs "$SOURCE_DOCUMENTS_JAIL" "$TARGET_DOCUMENTS_JAIL" "$USER_DEST_JAIL" "users"
+    mount_bindfs "$SOURCE_DOWNLOADS_JAIL" "$TARGET_DOWNLOADS_JAIL" "$USER_DEST_JAIL" "users"
+
+
+
+done < "$JAIL_USERS_FILE"
+
+echo "BindFS mounts concluídos."
+```
+
+
+
+### Cirando serviço para persistir montagem após reboot v2
 ```bash 
 #!/usr/bin/env bash
 set -euo pipefail
 
 readonly USER_ORG="alexf"
 readonly USER_DEST="alex"
-readonly GROUP_DEFAULT="grp-alex"
+readonly GROUP_DEFAULT="jailusers"
 
 # =========================================================
 # 🧱 MOUNTS FIXOS
