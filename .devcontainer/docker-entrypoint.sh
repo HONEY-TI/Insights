@@ -2,41 +2,68 @@
 set -e
 
 readonly USER=node
+readonly HOME_DIR="/home/${USER}"
 
-# ── Realinhar UID/GID do node com o dono do /workspace (bind mount do host) ─
-# Assim não depende de saber o UID/GID do host antecipadamente nem de rebuild.
+# Este entrypoint precisa começar como root.
+if [ "$(id -u)" -ne 0 ]; then
+    echo "[entrypoint] ERRO: o entrypoint precisa ser executado como root."
+    echo "[entrypoint] UID atual: $(id -u)"
+    exit 1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Descobrir UID/GID do bind mount
+# ─────────────────────────────────────────────────────────────────────────────
+
 HOST_UID=$(stat -c '%u' /workspace)
 HOST_GID=$(stat -c '%g' /workspace)
+
 CURRENT_UID=$(id -u "$USER")
 CURRENT_GID=$(id -g "$USER")
 
-#echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+echo "[entrypoint] /workspace pertence a UID:GID ${HOST_UID}:${HOST_GID}"
+echo "[entrypoint] usuário '$USER' atualmente é UID:GID ${CURRENT_UID}:${CURRENT_GID}"
 
-sudo echo "[entrypoint] /workspace pertence a UID:GID ${HOST_UID}:${HOST_GID}"
-sudo echo "[entrypoint] usuário '$USER' atualmente é UID:GID ${CURRENT_UID}:${CURRENT_GID}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Ajustar GID
+# ─────────────────────────────────────────────────────────────────────────────
 
-# -o (non-unique) evita falha caso o UID/GID alvo já esteja em uso por outro
-# usuário/grupo do sistema dentro da imagem (ex: colidir com root, UID 0).
 if [ "$HOST_GID" != "$CURRENT_GID" ]; then
-    sudo echo "[entrypoint] ajustando GID de '$USER' para $HOST_GID"
-    sudo groupmod -o -g "$HOST_GID" "$USER"
+    echo "[entrypoint] ajustando GID de '$USER' para $HOST_GID"
+
+    groupmod -o -g "$HOST_GID" "$USER"
 fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Ajustar UID
+# ─────────────────────────────────────────────────────────────────────────────
 
 if [ "$HOST_UID" != "$CURRENT_UID" ]; then
-    sudo echo "[entrypoint] ajustando UID de '$USER' para $HOST_UID"
-    sudo usermod -o -u "$HOST_UID" "$USER"
+    echo "[entrypoint] ajustando UID de '$USER' para $HOST_UID"
+
+    usermod -o -u "$HOST_UID" "$USER"
 fi
 
-# /home/node e o volume nomeado do vscode-server são gerenciados pelo Docker
-# (não são arquivos reais do host), então chown -R aqui é seguro.
-sudo chown -R "$USER:$USER" /home/$USER
+# ─────────────────────────────────────────────────────────────────────────────
+# Garantir HOME e VS Code Server
+# ─────────────────────────────────────────────────────────────────────────────
 
-# /workspace é bind mount do host: depois do realinhamento acima o dono já
-# deve bater. Evitamos chown -R recursivo nele (mexeria nos arquivos reais
-# do projeto no host e pode ser lento em diretórios grandes); só corrigimos
-# o ponto de montagem em si, como fallback.
-if [ "$(stat -c '%u:%g' /workspace)" != "$HOST_UID:$HOST_GID" ]; then
-    sudo chown "$USER:$USER" /workspace
-fi
+mkdir -p "$HOME_DIR"
+mkdir -p "$HOME_DIR/.vscode-server"
+
+chown "$HOST_UID:$HOST_GID" "$HOME_DIR"
+chown -R "$HOST_UID:$HOST_GID" "$HOME_DIR/.vscode-server"
+
+chmod u+rwx "$HOME_DIR"
+chmod u+rwx "$HOME_DIR/.vscode-server"
+
+echo "[entrypoint] node agora é UID:GID $(id -u "$USER"):$(id -g "$USER")"
+echo "[entrypoint] HOME: $(stat -c '%u:%g %a %n' "$HOME_DIR")"
+echo "[entrypoint] VS Code Server: $(stat -c '%u:%g %a %n' "$HOME_DIR/.vscode-server")"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Executar comando final como node
+# ─────────────────────────────────────────────────────────────────────────────
 
 exec "$@"
+

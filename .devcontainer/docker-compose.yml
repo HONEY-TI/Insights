@@ -1,19 +1,19 @@
+ #ssh -T github-alexfaria #ssh -T gitlab-alexfaria
 services:
   app:
     container_name: insights-devcontainer
+    image: insights-devcontainer:latest
     build:
       context: .
       dockerfile: Dockerfile
     environment:
       NODE_OPTIONS: "--max-old-space-size=4096"
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
-      SSH_AUTH_SOCK: /tmp/ssh-agent.sock #ssh -T github-alexfaria/ssh -T gitlab-alexfaria
+      GITHUB_TOKEN: ${GITHUB_TOKEN}      
     env_file:
       - .env
     volumes:
       - ../:/workspace:cached
       - vscode-extensions:/home/node/.vscode-server/extensions
-
     ports:
       - 3000:3000
       - 4200:4200
@@ -44,8 +44,7 @@ services:
 
 volumes:
   vscode-extensions:
-    name:   vscode-extensions
-    
+    name:   vscode-extensions    
 networks:
   helper-network:
     name: helper-network

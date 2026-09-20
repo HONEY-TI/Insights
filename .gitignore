@@ -384,6 +384,7 @@ TODO*
 **/.blackbox/
 **/.claude/
 **/.codex/
+**/AGENTS.md
 **/.openclaude/
 *.env
 .ai/

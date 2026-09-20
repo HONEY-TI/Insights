@@ -314,4 +314,6 @@ iptables -A OUTPUT -j REJECT --reject-with icmp-admin-prohibited
 iptables -A INPUT  -j DROP
 
 # ─── 13. Verificação final ───────────────────────────────────────────────────
-echo "Firewall configuration complete"
+echo "🛡️ Firewall configuration complete"
+sleep 3
+exit

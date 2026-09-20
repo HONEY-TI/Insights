@@ -668,7 +668,12 @@ e também como:
 
 ```bash
 git remote set-url --add --push origin \
-git@github-bob:bob-dev/project.git
+git@gitlab-alexfaria:alexfariakof/dev-persona-ai.git
+
+git remote set-url --add --push origin \
+git@github.com:HONEY-TI/dev-persona-ai.git
+
+
 ```
 
 ---
