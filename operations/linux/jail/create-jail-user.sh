@@ -1,114 +1,102 @@
 #!/bin/bash
-
 # =========================================================
-# 🔐 JailKit Shared User Creator
+# 🔐 JailKit Shared ADMIN User Creator (sudo SOMENTE dentro da jail)
 # =========================================================
-# 🔥 IMPORTANTE: Esse script possui dependência direta de remove-jail-user
-#
 # Uso:
-# ./create-user <user login>
+#   sudo ./create-jail-su-user <usuario>
 #
 # Exemplo:
-# ./create-user codex-user
+#   sudo ./create-jail-su-user codex-admin
 #
-# 🔥 IMPORTANTE: Para scripts administrativos compartilhados no Linux, os locais mais adequados são:
-#   ✅ Local Ideal para scripts administrativos (sudo) /usr/local/sbin
-#   sudo cp -r exit /usr/local/sbin/create-user
+# O usuário recebe:
+#   - sudo NOPASSWD SOMENTE dentro da jail
+#   - SKEL de /home/jail/etc/skel
+#   - zsh
+#   - gum
+#   - grupos necessários
+#   - Documentos compartilhado
+#   - workspace compartilhado
+#   - configuração de monitores
+#   - atalhos do VS Code
 #
-# ⚙️ Tornar script executável
-#  chmod +x create-user
-#
-# ⚙️ Permitir execução apenas para root e grupo sudo
-#   sudo chown root:sudo create-user
-#   sudo chmod 750 create-user
-#
-# Testat github connection
-# ssh -T git@github.com
-# =========================================================
-#
-# 🔒 AUTO-CHROOT NO TERMINAL
-# =========================================================
-# O usuário faz login gráfico (GDM) normalmente com /bin/bash real,
-# fora da jail — isso é necessário pro GNOME funcionar. Mas assim que
-# ele abre QUALQUER terminal interativo (GNOME Terminal, Ptyxis, ssh
-# direto na conta, `su - user` etc.), o .bashrc detecta que ainda
-# está "fora" da jail e se auto-substitui (`exec`) por um processo
-# chrootado, de forma transparente.
-#
-# Isso é feito via um wrapper root (`enter-jail`) liberado por sudoers
-# NOPASSWD apenas para o grupo jailusers, e apenas para chrootar como
-# o próprio usuário que chamou (checado via $SUDO_USER dentro do
-# wrapper — impede que um jailuser vire outro jailuser).
-#
-# ⚠️ Pré-requisitos que este script NÃO cobre:
-#   - jailkit já inicializado na jail (jk_init com os jails necessários)
-#   - /home/jail/proc e /home/jail/dev/pts montados (bind/mount), senão
-#     job control e alguns programas dentro do terminal chrootado quebram
-#   - pacote `bindfs` instalado (usado em create_shared_folder)
+# O usuário NÃO recebe sudo no HOST.
 # =========================================================
 
 set -euo pipefail
 
 # =========================================================
-# 🔐 CONFIGURAÇÕES
+# CONFIGURAÇÕES
 # =========================================================
 
 readonly JAIL_PATH="/home/jail"
-readonly GROUP_NAME="jailusers"
+readonly JAIL_SKEL="$JAIL_PATH/etc/skel"
 readonly DEFAULT_PASSWORD="7004"
+readonly GROUP_NAME="jailusers"
 
-
-# Wrapper + sudoers do auto-chroot
-readonly ENTER_JAIL_WRAPPER="/usr/local/sbin/enter-jail"
-readonly SUDOERS_FILE="/etc/sudoers.d/jail-users"
+# ⚠️ NÃO coloque "sudo" aqui.
+# O sudo será configurado somente dentro da jail.
+readonly EXTRA_HOST_GROUPS="docker,users,jailusers,gitssh"
 
 USERNAME="${1:-}"
 readonly USER_HOME="$JAIL_PATH/./home/$USERNAME"
-readonly EXTRA_HOST_GROUPS="docker,users,jailusers,gitssh"
 
 # =========================================================
-# 👑 VALIDAR ROOT
+# VALIDAR ROOT
 # =========================================================
 
 validate_root() {
     [[ "$EUID" -eq 0 ]] || {
         echo "❌ Execute como root."
+        echo "Uso: sudo create-jail-su-user <usuario>"
         exit 1
     }
 }
 
 # =========================================================
-# ❌ VALIDAR USUÁRIO
+# VALIDAR USUÁRIO
 # =========================================================
 
 validate_username() {
     [[ -n "$USERNAME" ]] || {
         echo "❌ Informe o usuário."
-        echo "Uso: sudo create-user <usuario>"
+        echo "Uso: sudo create-jail-su-user <usuario>"
         exit 1
     }
 }
 
 # =========================================================
-# 📦 GARANTIR DEPENDÊNCIAS
+# GARANTIR GRUPOS
 # =========================================================
 
 ensure_group_exists() {
+    local normalized
+    normalized="$(echo "$EXTRA_HOST_GROUPS" | tr -d '[:space:]')"
+
     getent group "$GROUP_NAME" >/dev/null || groupadd "$GROUP_NAME"
+
+    local IFS=","
+    for g in $normalized; do
+        [[ -n "$g" ]] || continue
+        getent group "$g" >/dev/null || {
+            echo "⚠️ Grupo '$g' não existe no sistema, criando..."
+            groupadd "$g"
+        }
+    done
 }
 
 # =========================================================
-# 🗑️ REMOVER USUÁRIO EXISTENTE
+# REMOVER USUÁRIO EXISTENTE
 # =========================================================
 
 remove_existing_user() {
     if id "$USERNAME" &>/dev/null; then
-        echo "⚠️ Usuário já existe."
+        echo "⚠️ Usuário '$USERNAME' já existe."
         read -rp "Remover e recriar? (s/N): " CONFIRM
 
         if [[ "$CONFIRM" =~ ^[Ss]$ ]]; then
             remove-jail-user "$USERNAME" || true
         else
+            echo "❌ Operação cancelada."
             exit 1
         fi
     fi
@@ -140,7 +128,7 @@ validate_skel() {
 }
 
 # =========================================================
-# 👤 CRIAR USUÁRIO
+# CRIAR USUÁRIO
 # =========================================================
 create_user() {
     local full_name
@@ -171,8 +159,9 @@ create_user() {
 }
 
 # =========================================================
-# 🔒 CONFIGURAR JAILKIT
+# CONFIGURAR JAILKIT
 # =========================================================
+
 configure_jailkit() {
     echo "🔒 Configurando JailKit..."
 
@@ -190,77 +179,42 @@ configure_jailkit() {
 }
 
 # =========================================================
-# 🔐 WRAPPER + SUDOERS PARA AUTO-CHROOT NO TERMINAL
-# =========================================================
-# Idempotente e global (não é por-usuário) — pode rodar sempre.
+# GARANTIR SUDO DENTRO DA JAIL
 # =========================================================
 
-setup_enter_jail_wrapper() {
-    cat > "$ENTER_JAIL_WRAPPER" <<'WRAPPER_EOF'
-#!/bin/bash
-# enter-jail — entra no chroot da jail como o usuário informado.
-# Só deve ser chamado via sudo por membros do grupo jailusers.
-set -euo pipefail
-
-JAIL_PATH="/home/jail"
-TARGET_USER="${1:-}"
-
-[[ -n "$TARGET_USER" ]] || { echo "Uso: enter-jail <usuario>" >&2; exit 1; }
-
-# Impede que um jailuser chroote como outro jailuser: só pode "entrar"
-# na jail como ele mesmo (SUDO_USER é setado pelo sudo, não pelo chamador).
-if [[ -z "${SUDO_USER:-}" ]] || [[ "$TARGET_USER" != "$SUDO_USER" ]]; then
-    echo "❌ Só é permitido entrar na jail como você mesmo." >&2
-    exit 1
-fi
-
-getent passwd "$TARGET_USER" >/dev/null || { echo "❌ Usuário inválido." >&2; exit 1; }
-
-# chroot NÃO reinicializa o ambiente como login/su fariam: HOME, USER e
-# LOGNAME continuam sendo os do processo pai (ex: /home/jail/home/user,
-# caminho que não existe mais dentro do novo root). Forçamos aqui os
-# valores corretos relativos ao NOVO root ($JAIL_PATH vira "/"), senão
-# `cd ~`, leitura do .profile e programas que confiam em $HOME quebram
-# — e, pior, um HOME errado pode fazer o usuário cair fora do próprio
-# home (ex: na raiz da jail), o que é exatamente o que NÃO queremos.
-TARGET_HOME="/home/$TARGET_USER"
-
-exec /usr/bin/env -i \
-    HOME="$TARGET_HOME" \
-    USER="$TARGET_USER" \
-    LOGNAME="$TARGET_USER" \
-    TERM="${TERM:-xterm-256color}" \
-    DISPLAY="${DISPLAY:-}" \
-    /usr/bin/chroot --userspec="$TARGET_USER:$TARGET_USER" "$JAIL_PATH" /bin/bash --login
-WRAPPER_EOF
-
-    chown root:root "$ENTER_JAIL_WRAPPER"
-    chmod 750 "$ENTER_JAIL_WRAPPER"
-}
-
-setup_sudoers() {
-    local tmp
-    tmp="$(mktemp)"
-
-    cat > "$tmp" <<EOF
-# Gerado por create-user — não editar manualmente.
-%$GROUP_NAME ALL=(root) NOPASSWD: $ENTER_JAIL_WRAPPER *
-EOF
-
-    if visudo -cf "$tmp" >/dev/null 2>&1; then
-        install -m 0440 -o root -g root "$tmp" "$SUDOERS_FILE"
+ensure_sudo_in_jail() {
+    if [[ -x "$JAIL_PATH/usr/bin/sudo" ]]; then
+        echo "✅ sudo já presente na jail."
     else
-        echo "❌ Arquivo sudoers gerado é inválido, abortando por segurança." >&2
-        rm -f "$tmp"
-        exit 1
+        echo "🔎 Copiando sudo para dentro da jail..."
+
+        if command -v jk_cp >/dev/null 2>&1; then
+            if jk_cp -v -j "$JAIL_PATH" sudo 2>/dev/null; then
+                echo "✅ sudo copiado via jk_cp."
+            elif jk_cp -v -j "$JAIL_PATH" /usr/bin/sudo 2>/dev/null; then
+                echo "✅ sudo copiado via caminho direto."
+            else
+                echo "⚠️ Não foi possível copiar sudo automaticamente."
+                echo "   Verifique /etc/jailkit/jk_init.ini."
+            fi
+        else
+            echo "⚠️ jk_cp não encontrado."
+        fi
     fi
 
-    rm -f "$tmp"
+    mkdir -p "$JAIL_PATH/etc/sudoers.d"
+
+    if [[ ! -f "$JAIL_PATH/etc/sudoers" ]]; then
+        touch "$JAIL_PATH/etc/sudoers"
+    fi
+
+    chmod 440 "$JAIL_PATH/etc/sudoers"
 }
 
 # =========================================================
 # GARANTIR ZSH DENTRO DA JAIL
 # =========================================================
+
 ensure_zsh_in_jail() {
     if [[ -x "$JAIL_PATH/usr/bin/zsh" ]]; then
         echo "✅ zsh já presente na jail."
@@ -289,6 +243,7 @@ ensure_zsh_in_jail() {
 # =========================================================
 # GARANTIR GUM
 # =========================================================
+
 ensure_gum_installed() {
     if ! command -v gum >/dev/null 2>&1; then
         echo "🔎 'gum' não encontrado no host. Tentando instalar..."
@@ -334,27 +289,57 @@ ensure_gum_installed() {
 }
 
 # =========================================================
-# 🔒 ENDURECER /home DENTRO DA JAIL
-# =========================================================
-# Idempotente e global (não é por-usuário) — roda sempre.
-# Sem isso, "ls /home" dentro da jail lista o login de TODOS os
-# usuários (enumeração), mesmo que cada home individual já esteja
-# em 700. 711 = dono (root) pode tudo; demais só conseguem "atravessar"
-# (cd) um subdiretório se já souberem o nome exato — não conseguem
-# listar (ls) o conteúdo de /home nem entrar no home alheio, pois o
-# home alheio em si está em 700.
+# ENDURECER /home
 # =========================================================
 
 harden_home_root() {
     local home_root="$JAIL_PATH/home"
+
     mkdir -p "$home_root"
     chown root:root "$home_root"
     chmod 711 "$home_root"
+
+    echo "🔒 /home da jail protegido."
 }
 
 # =========================================================
-# 🏠 CONFIGURAR HOME DENTRO DA JAIL
+# TORNAR SU IMPOSSÍVEL DE USAR DENTRO DA JAIL
 # =========================================================
+
+disable_su_completely() {
+    echo "🔒 Removendo su definitivamente da jail..."
+
+    # Busca qualquer arquivo/symlink chamado exatamente "su"
+    # em locais típicos de binário dentro da jail
+    local found=0
+
+    while IFS= read -r -d '' su_bin; do
+        rm -f "$su_bin"
+        echo "  ✅ removido: $su_bin"
+        found=1
+    done < <(find "$JAIL_PATH/bin" "$JAIL_PATH/usr/bin" "$JAIL_PATH/usr/sbin" "$JAIL_PATH/sbin" \
+                -maxdepth 1 -type f -o -type l -name 'su' -print0 2>/dev/null)
+
+    if [[ "$found" -eq 0 ]]; then
+        echo "  ℹ️ nenhum binário 'su' encontrado nos caminhos padrão."
+    fi
+
+    # Verificação final: confirma que não existe mais em lugar nenhum da jail
+    local leftover
+    leftover="$(find "$JAIL_PATH" -xdev -type f -name 'su' 2>/dev/null)"
+
+    if [[ -n "$leftover" ]]; then
+        echo "⚠️ ATENÇÃO: ainda restam ocorrências de 'su' na jail:"
+        echo "$leftover"
+    else
+        echo "✅ Confirmado: su não existe mais dentro da jail."
+    fi
+}
+
+# =========================================================
+# CONFIGURAR HOME
+# =========================================================
+
 configure_home() {
     local home="$JAIL_PATH/home/$USERNAME"
 
@@ -385,8 +370,9 @@ configure_home() {
 }
 
 # =========================================================
-# 📂 SHARED FOLDERS
+# SHARED FOLDERS
 # =========================================================
+
 create_shared_folder() {
     local src="$1"
     local dst="$2"
@@ -412,8 +398,9 @@ create_shared_folder() {
 }
 
 # =========================================================
-# ➕ Adicionar usuário a lista de persistencia de mount
+# LISTA DE PERSISTÊNCIA
 # =========================================================
+
 add_jail_user_to_list_persist_bind_mount() {
     local file="/home/jail/etc/jail-users.list"
 
@@ -423,6 +410,8 @@ add_jail_user_to_list_persist_bind_mount() {
     if ! grep -qx "$USERNAME" "$file"; then
         echo "$USERNAME" >> "$file"
     fi
+
+    echo "✅ Usuário adicionado à lista de persistência."
 }
 
 # =========================================================
@@ -587,6 +576,8 @@ configure_gh_auth() {
     # do binário 'env' dentro da jail).
     if echo "$token" | HOME="/home/$USERNAME" chroot --userspec="$USERNAME:$USERNAME" "$JAIL_PATH" \
         gh auth login --with-token
+        git config --global user.name "Alex Ribeiro de Faria"
+        git config --global user.email "135660435+alexribeirofaria@github.com"
     then
         echo "✅ gh autenticado com sucesso dentro da jail."
     else
@@ -627,6 +618,40 @@ ensure_network_in_jail() {
 }
 
 # =========================================================
+# LISTAR USUÁRIOS DA JAIL
+# =========================================================
+
+list_users() {
+    echo "👥 Usuários Linux ativos na jail:"
+    echo
+
+    printf "%-25s %-10s %-30s %-30s\n" "USUÁRIO" "UID" "HOME" "SHELL"
+    printf '%*s\n' 100 '' | tr ' ' '-'
+
+    awk -F: -v prefix="$JAIL_PATH/home/" '
+        $6 ~ "^" prefix {
+            printf "%-25s %-10s %-30s %-30s\n", $1, $3, $6, $7
+        }
+    ' /etc/passwd
+
+    echo
+    echo "📄 Lista de persistência:"
+    
+    if [[ -f "$JAIL_PATH/etc/jail-users.list" ]]; then
+        sed '/^[[:space:]]*$/d' "$JAIL_PATH/etc/jail-users.list" |
+            while IFS= read -r user; do
+                if id "$user" >/dev/null 2>&1; then
+                    echo "  ✅ $user"
+                else
+                    echo "  ⚠️ $user (não existe no sistema)"
+                fi
+            done
+    else
+        echo "  ℹ️ Nenhum arquivo de persistência encontrado."
+    fi
+}
+
+# =========================================================
 # RESUMO
 # =========================================================
 
@@ -636,10 +661,8 @@ show_summary() {
     echo "✅ USUÁRIO ADMIN CRIADO"
     echo "=============================================="
     echo
-    echo "👤 Usuário : $USERNAME"    
-    echo "🏠 Jail    : $JAIL_PATH"
-    echo "🔒 Terminal entra automaticamente na jail via $ENTER_JAIL_WRAPPER"
-    echo ""
+    echo "👤 Usuário : $USERNAME"
+    echo "🏠 HOME    : $USER_HOME"
     echo "🧸 SKEL    : $JAIL_SKEL"
     echo "🛡️ Sudo    : NOPASSWD somente na jail"
     echo "🐚 Shell   : zsh"
@@ -663,29 +686,52 @@ show_summary() {
 }
 
 # =========================================================
-# 🚀 MAIN
+# MAIN
 # =========================================================
 
 main() {
-
     validate_root
+
+    if [[ "${1:-}" == "--list" ]]; then
+        list_users
+        exit 0
+    fi
+
     validate_username
     validate_skel
     ensure_group_exists
     remove_existing_user
     create_user
-    setup_sudoers
-    setup_enter_jail_wrapper
-    harden_home_root            
-    ensure_sudo_in_jail
+    configure_jailkit    
+    harden_home_root
+    disable_su_completely
     ensure_zsh_in_jail
-    ensure_gum_installed
-    configure_home    
-    configure_jailkit
+    ensure_gum_installed    
+    configure_home
+    ensure_gh_in_jail
     ensure_network_in_jail
-    configure_gh_auth     
-    create_shared_folder "$JAIL_PATH/Documentos" "$USER_HOME/Documentos"
-    create_shared_folder "$JAIL_PATH/workspace" "$USER_HOME/workspace"
+    configure_gh_auth    
+    create_shared_folder \
+        "$JAIL_PATH/Documentos" \
+        "$USER_HOME/Documentos" \
+        "users"
+
+    create_shared_folder \
+        "$JAIL_PATH/Downloads" \
+        "$USER_HOME/Downloads" \
+        "users"
+
+    create_shared_folder \
+        "$JAIL_PATH/workspace" \
+        "$USER_HOME/workspace" \
+        "$GROUP_NAME"
+
+    if [[ -x /usr/local/bin/jail-mounts.sh ]]; then
+        /usr/local/bin/jail-mounts.sh
+    else
+        echo "⚠️ /usr/local/bin/jail-mounts.sh não encontrado, pulando."
+    fi
+
     add_jail_user_to_list_persist_bind_mount
     configure_monitors
     configure_user_vscode_shortcuts
