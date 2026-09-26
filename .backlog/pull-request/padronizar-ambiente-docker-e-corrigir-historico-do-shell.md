@@ -5,7 +5,7 @@ title: "PR(#15)-Padronizar Ambiente Docker e Corrigir Histórico do Shell"
 branch: feature/padronizar-ambiente-docker-e-corrigir-historico-do-shell
 base: main
 extends: feature-03-padronizar-ambiente-docker-e-corrigir-historico-do-shell
-status: draft
+status: open
 ---
 
 # Padronizar Ambiente Docker e Corrigir Histórico do Shell
