@@ -28,7 +28,7 @@ services:
     command: sleep infinity
     #entrypoint: /usr/local/bin/docker-entrypoint.sh
     networks:
-      - helper-network
+      - insights-network
     deploy:
       resources:
         limits:
@@ -44,8 +44,8 @@ services:
 
 volumes:
   vscode-extensions:
-    name:   vscode-extensions    
+    name: vscode-extensions-insights
 networks:
-  helper-network:
-    name: helper-network
+  insights-network:
+    name: insights-network
     driver: bridge

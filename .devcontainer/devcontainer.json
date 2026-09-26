@@ -9,6 +9,7 @@
   "updateRemoteUserUID": false,
   "postCreateCommand": "sudo /usr/local/bin/setup-codex.sh",
   "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && codex",
+  "shutdownAction": "stopCompose",
   "mounts": [
     "type=volume,target=/home/node/.vscode-server",
     "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind"

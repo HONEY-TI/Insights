@@ -2,68 +2,33 @@
 set -e
 
 readonly USER=node
-readonly HOME_DIR="/home/${USER}"
+readonly PROJECT_WORKSPACE=/workspace
 
-# Este entrypoint precisa começar como root.
-if [ "$(id -u)" -ne 0 ]; then
-    echo "[entrypoint] ERRO: o entrypoint precisa ser executado como root."
-    echo "[entrypoint] UID atual: $(id -u)"
-    exit 1
-fi
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Descobrir UID/GID do bind mount
-# ─────────────────────────────────────────────────────────────────────────────
-
-HOST_UID=$(stat -c '%u' /workspace)
-HOST_GID=$(stat -c '%g' /workspace)
-
+# ── Realinhar UID/GID do node com o dono do $PROJECT_WORKSPACE ───────────────
+HOST_UID=$(stat -c '%u' $PROJECT_WORKSPACE)
+HOST_GID=$(stat -c '%g' $PROJECT_WORKSPACE)
 CURRENT_UID=$(id -u "$USER")
 CURRENT_GID=$(id -g "$USER")
 
-echo "[entrypoint] /workspace pertence a UID:GID ${HOST_UID}:${HOST_GID}"
+echo "[entrypoint] $PROJECT_WORKSPACE pertence a UID:GID ${HOST_UID}:${HOST_GID}"
 echo "[entrypoint] usuário '$USER' atualmente é UID:GID ${CURRENT_UID}:${CURRENT_GID}"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Ajustar GID
-# ─────────────────────────────────────────────────────────────────────────────
 
 if [ "$HOST_GID" != "$CURRENT_GID" ]; then
     echo "[entrypoint] ajustando GID de '$USER' para $HOST_GID"
-
     groupmod -o -g "$HOST_GID" "$USER"
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Ajustar UID
-# ─────────────────────────────────────────────────────────────────────────────
-
 if [ "$HOST_UID" != "$CURRENT_UID" ]; then
     echo "[entrypoint] ajustando UID de '$USER' para $HOST_UID"
-
     usermod -o -u "$HOST_UID" "$USER"
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Garantir HOME e VS Code Server
-# ─────────────────────────────────────────────────────────────────────────────
+chown -R "$USER:$USER" /home/$USER 2>/dev/null || true
+chown -R "$USER:$USER" /home/$USER/.vscode-server 2>/dev/null || true
 
-mkdir -p "$HOME_DIR"
-mkdir -p "$HOME_DIR/.vscode-server"
+if [ "$(stat -c '%u:%g' $PROJECT_WORKSPACE)" != "$HOST_UID:$HOST_GID" ]; then
+    chown "$USER:$USER" $PROJECT_WORKSPACE 2>/dev/null || true
+fi
 
-chown "$HOST_UID:$HOST_GID" "$HOME_DIR"
-chown -R "$HOST_UID:$HOST_GID" "$HOME_DIR/.vscode-server"
-
-chmod u+rwx "$HOME_DIR"
-chmod u+rwx "$HOME_DIR/.vscode-server"
-
-echo "[entrypoint] node agora é UID:GID $(id -u "$USER"):$(id -g "$USER")"
-echo "[entrypoint] HOME: $(stat -c '%u:%g %a %n' "$HOME_DIR")"
-echo "[entrypoint] VS Code Server: $(stat -c '%u:%g %a %n' "$HOME_DIR/.vscode-server")"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Executar comando final como node
-# ─────────────────────────────────────────────────────────────────────────────
-
+# ── Processo original do container ──────────────────────────────────
 exec "$@"
-

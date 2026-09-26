@@ -145,6 +145,15 @@ Execute:
 ssh-keygen -t ed25519 \
     -C "alice@example.com" \
     -f ~/.ssh/id_ed25519_alice
+
+ssh-keygen -t ed25519 \
+    -C "alexfariakof@gmail.com" \
+    -f /home/jail/ssh/id_ed25519_gitlab    
+
+ssh-keygen -t ed25519 \
+    -C "alexfariakof@yahoo.com.br" \
+    -f /home/jail/ssh/id_ed25519_github
+
 ```
 
 O comando criará:
