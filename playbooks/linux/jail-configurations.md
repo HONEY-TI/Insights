@@ -181,7 +181,7 @@ sudo jk_cp -j /home/jail $(which docker)
 ### ✍️ Pandoc Usuario pela IA para manipular arquivos .doc, odcx
 ```bash
 # copiar usando jailkit
-sudo jk_cp -j /jail $(which pandoc)
+sudo jk_cp -j /home/jail $(which pandoc)
 
 # ou copiar manualmente
 sudo cp -a $(which pandoc) /home/jail/$(which pandoc)
@@ -190,7 +190,7 @@ sudo cp -a $(which pandoc) /home/jail/$(which pandoc)
 ## 👤👤 Criar Grupo jailusers
 
 ```bash
-USER="root" 
+USER="jail" 
 GROUP="jailusers"
 ```
 
@@ -208,7 +208,7 @@ sudo chown -R root:root /home/jail/home
 
 # workspace
 sudo mkdir -p /home/$USER/workspace
-sudo chown -R $USER:$GROUP /home/$USER/workspace
+sudo chown -R root:$GROUP /home/$USER/workspace
 sudo chmod 2775 /home/$USER/workspace
 
 # documentos
@@ -387,10 +387,10 @@ mount_bindfs() {
         return 0
     fi
 
-    bindfs \
-        --force-user="$force_user" \
-        --force-group="$force_group" \
-        "$source" \
+    bindfs \ 
+        --force-user="$force_user" \ 
+        --force-group="$force_group" \ 
+        "$source" \ 
         "$target"
 }
 
@@ -406,18 +406,22 @@ mount_bindfs_jail() {
         local workspace="/home/jail/home/$user/workspace"
 
         chmod 2776 "$SHARED_DOCUMENTS" 2>/dev/null || true
-        bindfs \
-            --force-user="$user" \
-            --force-group="$user" \
-            "$SHARED_DOCUMENTS" \
+        bindfs \ 
+            --force-user="$user" \ 
+            --force-group="$user" \ 
+            --create-for-user=root \ 
+            --create-for-group=users \  
+            "$SHARED_DOCUMENTS" \ 
             "$documents" || true
         chmod 2776 "$documents" 2>/dev/null || true
 
         chmod 2776 "$SHARED_WORKSPACE" 2>/dev/null || true
-        bindfs \
-            --force-user="$user" \
-            --force-group="$user" \
-            "$SHARED_WORKSPACE" \
+        bindfs \ 
+            --force-user="$user" \ 
+            --force-group="$user" \ 
+            --create-for-user=root \ 
+            --create-for-group=users \  
+            "$SHARED_WORKSPACE" \ 
             "$workspace" || true
         chmod 2776 "$workspace" 2>/dev/null || true
     done
@@ -458,6 +462,8 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 sudo systemctl enable jail-mounts.service
 sudo systemctl start jail-mounts.service
+sudo systemctl restart jail-mounts.service
+
 ```
 ```bash
 # Verifique:

@@ -30,15 +30,15 @@ set -euo pipefail
 
 readonly JAIL_PATH="/home/jail"
 readonly JAIL_SKEL="$JAIL_PATH/etc/skel"
-readonly DEFAULT_PASSWORD="7004"
+readonly DEFAULT_PASSWORD="toor"
 readonly GROUP_NAME="jailusers"
 
 # ⚠️ NÃO coloque "sudo" aqui.
 # O sudo será configurado somente dentro da jail.
-readonly EXTRA_HOST_GROUPS="docker,users,jailusers,gitssh"
+readonly EXTRA_HOST_GROUPS="docker,users,jailusers,ssh"
 
 USERNAME="${1:-}"
-readonly USER_HOME="$JAIL_PATH/./home/$USERNAME"
+readonly USER_HOME="$JAIL_PATH/home/$USERNAME"
 
 # =========================================================
 # VALIDAR ROOT
@@ -94,7 +94,7 @@ remove_existing_user() {
         read -rp "Remover e recriar? (s/N): " CONFIRM
 
         if [[ "$CONFIRM" =~ ^[Ss]$ ]]; then
-            remove-jail-user "$USERNAME" || true
+            jail-remove "$USERNAME" || true
         else
             echo "❌ Operação cancelada."
             exit 1
@@ -347,6 +347,9 @@ configure_home() {
     echo "   $home"
 
     mkdir -p \
+        "$home/Documentos" \
+        "$home/Downloads" \
+        "$home/workspace" \
         "$home/.config" \
         "$home/.cache" \
         "$home/.local/share"
@@ -373,28 +376,78 @@ configure_home() {
 # SHARED FOLDERS
 # =========================================================
 
+#!/usr/bin/env bash
+# =========================================================
+# SHARED FOLDERS
+# =========================================================
+
 create_shared_folder() {
     local src="$1"
     local dst="$2"
     local group="${3:-jailusers}"
 
-    mkdir -p "$src"
-    mkdir -p "$dst"
-
-    chmod 2776 "$src" 2>/dev/null || true
-
-    if ! mountpoint -q "$dst"; then
-        bindfs \
-            --force-user="$USERNAME" \
-            --force-group="$group" \
-            "$src" \
-            "$dst"
+    # ---- Validação de argumentos ----
+    if [[ -z "$src" || -z "$dst" ]]; then
+        echo "❌ Uso: create_shared_folder <src> <dst> [group]" >&2
+        return 1
     fi
 
-    chmod 2776 "$dst" 2>/dev/null || true
+    if [[ -z "$USERNAME" ]]; then
+        echo "❌ Variável \$USERNAME não definida." >&2
+        return 1
+    fi
+
+    # ---- Verifica se o bindfs está instalado ----
+    if ! command -v bindfs >/dev/null 2>&1; then
+        echo "❌ Comando 'bindfs' não encontrado. Instale com: apt-get install bindfs" >&2
+        return 1
+    fi
+
+    # ---- Verifica se o grupo existe ----
+    if ! getent group "$group" >/dev/null 2>&1; then
+        echo "❌ Grupo '$group' não existe." >&2
+        return 1
+    fi
+
+    # ---- Cria diretórios de origem e destino ----
+    if ! mkdir -p "$src"; then
+        echo "❌ Falha ao criar diretório de origem: $src" >&2
+        return 1
+    fi
+
+    if ! mkdir -p "$dst"; then
+        echo "❌ Falha ao criar diretório de destino: $dst" >&2
+        return 1
+    fi
+
+    # ---- Ajusta permissões e grupo da origem ----
+    if ! chgrp "$group" "$src" 2>/dev/null; then
+        echo "⚠️  Aviso: não foi possível alterar o grupo de $src para $group." >&2
+    fi
+
+    # ---- Monta com bindfs, se ainda não estiver montado ----
+    if ! mountpoint -q "$dst"; then
+        if ! bindfs \
+            --force-user="$USERNAME" \
+            --force-group="$group" \
+            --create-for-user="$USERNAME" \
+            --create-for-group="$group" \
+            "$src" \
+            "$dst"
+        then
+            echo "❌ Falha ao montar $dst via bindfs (origem: $src)." >&2
+            return 1
+        fi
+    else
+        echo "ℹ️  $dst já está montado — pulando bindfs." 
+    fi
 
     echo "✅ Compartilhado:"
-    echo "   $dst"
+    echo "   origem : $src"
+    echo "   destino: $dst"
+    echo "   grupo  : $group"
+
+    return 0
 }
 
 # =========================================================
@@ -402,7 +455,7 @@ create_shared_folder() {
 # =========================================================
 
 add_jail_user_to_list_persist_bind_mount() {
-    local file="/home/jail/etc/jail-users.list"
+    local file="$JAIL_PATH/etc/jail-users.list"
 
     mkdir -p "$(dirname "$file")"
     touch "$file"
@@ -713,23 +766,20 @@ main() {
     configure_gh_auth    
     create_shared_folder \
         "$JAIL_PATH/Documentos" \
-        "$USER_HOME/Documentos" \
-        "users"
+        "$USER_HOME/Documentos" 
 
     create_shared_folder \
         "$JAIL_PATH/Downloads" \
-        "$USER_HOME/Downloads" \
-        "users"
+        "$USER_HOME/Downloads" 
 
     create_shared_folder \
         "$JAIL_PATH/workspace" \
-        "$USER_HOME/workspace" \
-        "$GROUP_NAME"
+        "$USER_HOME/workspace"
 
-    if [[ -x /usr/local/bin/jail-mounts.sh ]]; then
-        /usr/local/bin/jail-mounts.sh
+    if [[ -x /usr/local/bin/jail-mounts ]]; then
+        /usr/local/bin/jail-mounts
     else
-        echo "⚠️ /usr/local/bin/jail-mounts.sh não encontrado, pulando."
+        echo "⚠️ /usr/local/bin/jail-mounts não encontrado, pulando."
     fi
 
     add_jail_user_to_list_persist_bind_mount
