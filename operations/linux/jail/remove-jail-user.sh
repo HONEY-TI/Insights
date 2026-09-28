@@ -5,21 +5,21 @@
 # =========================================================
 #
 # Uso:
-# ./remove-jail-user <user login>
+# ./jail-remove <user login>
 #
 # Exemplo:
-# ./remove-jail-user codex-user
+# ./jail-remove codex-user
 #
 # 🔥 IMPORTANTE: Para scripts administrativos compartilhados no Linux, os locais mais adequados são:
 #   ✅ Local Ideal para scripts administrativos (sudo) /usr/local/sbin
-#   sudo cp -r remove-jail-user /usr/local/sbin/remove-jail-user
+#   sudo cp -r jail-remove /usr/local/sbin/jail-remove
 #
 # ⚙️ Tornar script executável
-#  chmod +x remove-jail-user
+#  chmod +x jail-remove
 #
 # ⚙️ Permitir execução apenas para root e grupo sudo
-#   sudo chown root:sudo remove-jail-user
-#   sudo chmod 750 remove-jail-user
+#   sudo chown root:sudo jail-remove
+#   sudo chmod 750 jail-remove
 # =========================================================
 
 set -euo pipefail
@@ -47,7 +47,7 @@ validate_root() {
 validate_username() {
     [[ -n "$USERNAME" ]] || {
         echo "❌ Informe o usuário."
-        echo "Uso: sudo remove-jail-user <username>"
+        echo "Uso: sudo jail-remove <username>"
         exit 1
     }
 }
@@ -103,7 +103,7 @@ unmount_shared_folders() {
 
     echo "$mounts" | awk '{print $3}' | while read -r mnt; do
         if echo "$mnt" | grep -q "$USERNAME"; then
-            safe_unmount "$mnt"
+            umount -l "$mnt"
         fi
     done
 }
@@ -146,6 +146,34 @@ remove_jk_chrootsh_config() {
     /^\[/ { skip=0 }
     !skip { print }
     ' "$config" > "${config}.tmp" && mv "${config}.tmp" "$config"
+}
+
+# =========================================================
+# 🗑️ REMOVER ARQUIVO(S) SUDOERS.D DA JAIL
+# =========================================================
+remove_jail_sudoers_entry() {
+
+    local sudoers_dir="$JAIL_PATH/etc/sudoers.d"
+
+    echo "🧹 Verificando arquivos sudoers.d do usuário..."
+
+    [[ -d "$sudoers_dir" ]] || {
+        echo "ℹ️ Diretório $sudoers_dir não existe, pulando."
+        return 0
+    }
+
+    local found=0
+    local f
+    for f in "$sudoers_dir"/90-"$USERNAME"*; do
+        [[ -e "$f" ]] || continue
+        echo "🗑️ Removendo arquivo sudoers: $f"
+        rm -f -- "$f"
+        found=1
+    done
+
+    if [[ "$found" -eq 0 ]]; then
+        echo "ℹ️ Nenhum arquivo 90-$USERNAME* encontrado em $sudoers_dir."
+    fi
 }
 
 # =========================================================
@@ -221,6 +249,7 @@ main() {
     remove_jail_home
     remove_jail_entries
     remove_jail_user_from_list_bind_mount
+    remove_jail_sudoers_entry
     remove_groups
     remove_jk_chrootsh_config
 
