@@ -91,7 +91,7 @@ chmod +x .git/hooks/post-checkout
 
 - ❌ hooks não são versionados no Git
 - ❌ não executam no clone inicial
-- ✔ funcionam em checkout, pull e troca de branches
+- ✔ funcionam em checkout, pull e outras operações de atualização do working tree
 
 ---
 

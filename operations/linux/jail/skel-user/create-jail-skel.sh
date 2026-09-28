@@ -127,11 +127,29 @@ confirm_replace() {
 
 prepare_skel() {
 
-    echo "🧹 Preparando SKEL..."
+    echo "🧹 Preparando SKEL..."    
 
-    rm -rf "$JAIL_SKEL"
+    if [ -e "$JAIL_SKEL/.ssh" ]; then
+        echo "🔓 Removendo atributo imutável de $JAIL_SKEL/.sshtb..."
 
-    mkdir -p "$JAIL_SKEL"
+        if ! rm -rf "$JAIL_SKEL/.ssh"; then
+            chattr -i "$JAIL_SKEL/.ssh"
+            chattr -d "$JAIL_SKEL/.ssh"
+            rm -rf "$JAIL_SKEL/.ssh"
+        fi
+    fi
+
+    if ! rm -rf "$JAIL_SKEL"; then
+        echo "❌ Erro: não foi possível remover o diretório SKEL: $JAIL_SKEL" >&2
+        exit 1
+    fi
+
+    if ! mkdir -p "$JAIL_SKEL"; then
+        echo "❌ Erro: não foi possível criar o diretório SKEL: $JAIL_SKEL" >&2
+        exit 1
+    fi
+
+    echo "✅ Folder SKEL preparado com sucesso."
 }
 
 # =========================================================
@@ -193,6 +211,10 @@ copy_shell_configuration() {
     copy_file \
         "$USER_HOME/.bashrc" \
         "$JAIL_SKEL/.bashrc"
+
+    copy_file \
+        "$USER_HOME/.bashrc_aliases" \
+        "$JAIL_SKEL/.bashrc_aliases"
 
     copy_file \
         "$USER_HOME/.bash_logout" \
@@ -338,9 +360,16 @@ configure_shared_ssh() {
     echo
     echo "🔑 Configurando SSH compartilhado"
     echo
+    
+    chattr -i "$JAIL_SKEL/.ssh"
+    chattr -d "$JAIL_SKEL/.ssh"
 
-    rm -rf "$JAIL_SKEL/.ssh"
-    ln -s "$JAIL_PATH/etc/ssh" "$JAIL_SKEL/.ssh"
+    if [ ! -d "$JAIL_SKEL/.ssh" ]; then
+      mkdir -p "$JAIL_SKEL/.ssh" || exit 1
+    fi
+
+    cp -r "/home/jail/ssh" "$JAIL_SKEL/.ssh" || exit 1
+    chattr +i "$JAIL_SKEL/.ssh"
 
     echo "  🔗 .ssh -> /ssh"
 }
@@ -370,6 +399,40 @@ remove_unwanted_content() {
 }
 
 # =========================================================
+# VALIDAR RESULTADO
+# =========================================================
+
+validate_result() {
+
+    echo
+    echo "🔎 Validando SKEL"
+    echo
+
+    local required_files=(
+        ".bash_logout"
+        ".profile"
+        ".bashrc"
+        ".bashrc_aliases"
+        ".zshrc"
+        ".zsh_aliases"
+    )
+
+    local file
+
+    for file in "${required_files[@]}"; do
+
+        if [[ -f "$JAIL_SKEL/$file" ]]; then
+            chown root:root $JAIL_SKEL/$file
+            echo -e "${GREEN}  ✅ $file${RESET}"
+
+        else
+
+            echo -e "${YELLOW}  ⚠️ $file ausente${RESET}"
+        fi
+    done  
+}
+
+# =========================================================
 # PERMISSÕES
 # =========================================================
 
@@ -379,7 +442,7 @@ configure_permissions() {
     echo "🔐 Configurando permissões"
     echo
 
-    chown -R root:root "$JAIL_SKEL"
+    chown root:root "$JAIL_SKEL"
 
     chmod 755 "$JAIL_SKEL"
 
@@ -394,66 +457,7 @@ configure_permissions() {
     find "$JAIL_SKEL" \
         -type d \
         -exec chmod 755 {} \;
-
     # O symlink .ssh não precisa de chmod.
-}
-
-# =========================================================
-# VALIDAR RESULTADO
-# =========================================================
-
-validate_result() {
-
-    echo
-    echo "🔎 Validando SKEL"
-    echo
-
-    local required_files=(
-        ".profile"
-        ".bashrc"
-        ".zshrc"
-        ".zsh_aliases"
-    )
-
-    local file
-
-    for file in "${required_files[@]}"; do
-
-        if [[ -f "$JAIL_SKEL/$file" ]]; then
-
-            echo -e "${GREEN}  ✅ $file${RESET}"
-
-        else
-
-            echo -e "${YELLOW}  ⚠️ $file ausente${RESET}"
-        fi
-    done
-
-    # -----------------------------------------------------
-    # SSH
-    # -----------------------------------------------------
-
-    if [[ -L "$JAIL_SKEL/.ssh" ]]; then
-
-        local target
-
-        target="$(readlink "$JAIL_SKEL/.ssh")"
-
-
-        if [[ "$target" == "/ssh" ]]; then
-            echo -e "${RED}  ❌ .ssh aponta para: $target${RESET}"            
-
-        else
-            echo -e "${GREEN}  ✅ .ssh -> /ssh${RESET}"
-            return 1
-        fi
-
-    else
-
-        echo -e "${RED}  ❌ .ssh não é um symlink${RESET}"
-
-        return 1
-    fi
 }
 
 # =========================================================
@@ -619,19 +623,51 @@ ensure_flatpak_in_jail() {
 #
 # UUID descoberto via D-Bus da sessão ativa do usuário modelo,
 # em vez de glob no nome do diretório.
+#
+# A extensão pode estar em dois lugares de origem no HOST:
+#
+#   - $USER_HOME/.local/share/gnome-shell/extensions
+#     (instalada manualmente pelo usuário)
+#
+#   - /usr/share/gnome-shell/extensions
+#     (instalada system-wide, ex: pacote apt/kali-desktop-gnome,
+#     como o dock padrão do Kali)
+#
+# Ambos são verificados, nessa ordem. Se a origem encontrada já
+# for um dos destinos system-wide, a cópia é dispensada.
 # =========================================================
 
 install_gnome_extension_systemwide() {
 
-    local host_ext_root="$USER_HOME/.local/share/gnome-shell/extensions"
+    local host_ext_roots=(
+        "$USER_HOME/.local/share/gnome-shell/extensions"
+        "/usr/share/gnome-shell/extensions"
+    )
 
     local targets=(
         "/usr/share/gnome-shell/extensions"
         "$JAIL_PATH/usr/share/gnome-shell/extensions"
     )
 
-    if [[ ! -d "$host_ext_root" ]]; then
-        echo "⚠️ Nenhuma extensão encontrada em $host_ext_root"
+    # -----------------------------------------------------
+    # Verifica existência dos diretórios de origem primeiro
+    # -----------------------------------------------------
+
+    local existing_roots=()
+    local root
+
+    for root in "${host_ext_roots[@]}"; do
+
+        if [[ -d "$root" ]]; then
+            existing_roots+=("$root")
+            echo "  📁 Diretório de extensões encontrado: $root"
+        else
+            echo "  ⚠️ Não encontrado: $root"
+        fi
+    done
+
+    if [[ "${#existing_roots[@]}" -eq 0 ]]; then
+        echo "⚠️ Nenhum diretório de extensões encontrado (usuário nem system-wide)."
         return 0
     fi
 
@@ -659,44 +695,82 @@ install_gnome_extension_systemwide() {
                 XDG_RUNTIME_DIR="/run/user/$uid" \
                 DBUS_SESSION_BUS_ADDRESS="$bus_addr" \
             gnome-extensions list --enabled \
-            | grep -iE 'resource|monitor' || true
+            | grep -iE 'resource|monitor|dash-to-dock|dock' || true
     )"
 
     if [[ -z "$enabled_uuids" ]]; then
-        echo "⚠️ Nenhuma extensão 'resource/monitor' habilitada para $USERNAME."
+        echo "⚠️ Nenhuma extensão relevante habilitada para $USERNAME."
         return 1
     fi
 
     local found=0
     local uuid
     local target
+    local uuid_dir
+    local already_systemwide
 
     while IFS= read -r uuid; do
 
         [[ -n "$uuid" ]] || continue
 
-        local uuid_dir="$host_ext_root/$uuid"
+        # ---------------------------------------------------
+        # Procura o UUID em cada diretório de origem, na
+        # ordem definida em host_ext_roots (usuário primeiro).
+        # ---------------------------------------------------
 
-        if [[ ! -d "$uuid_dir" ]]; then
-            echo "⚠️ UUID '$uuid' habilitado, mas diretório não encontrado em $host_ext_root"
+        uuid_dir=""
+
+        for root in "${existing_roots[@]}"; do
+            if [[ -d "$root/$uuid" ]]; then
+                uuid_dir="$root/$uuid"
+                break
+            fi
+        done
+
+        if [[ -z "$uuid_dir" ]]; then
+            echo "⚠️ UUID '$uuid' habilitado, mas não encontrado em nenhum diretório conhecido."
             continue
         fi
 
-        echo "🧩 Instalando extensão: $uuid"
+        echo "🧩 Extensão: $uuid"
+        echo "   📍 Origem: $uuid_dir"
+
+        # ---------------------------------------------------
+        # Se a origem já é um dos destinos system-wide (ex:
+        # extensão veio de pacote apt, como o dock do Kali),
+        # não precisa copiar — só confirma e registra o UUID.
+        # ---------------------------------------------------
+
+        already_systemwide=0
 
         for target in "${targets[@]}"; do
-
-            mkdir -p "$target"
-
-            rm -rf "$target/$uuid"
-            cp -a "$uuid_dir" "$target/$uuid"
-
-            chown -R root:root "$target/$uuid"
-            find "$target/$uuid" -type d -exec chmod 755 {} \;
-            find "$target/$uuid" -type f -exec chmod 644 {} \;
-
-            echo "   ✅ $target/$uuid"
+            if [[ "$uuid_dir" == "$target/$uuid" ]]; then
+                already_systemwide=1
+                break
+            fi
         done
+
+        if [[ "$already_systemwide" -eq 1 ]]; then
+
+            echo "   ℹ️ Já é system-wide (pacote), cópia dispensada."
+            echo "   ✅ $uuid_dir"
+
+        else
+
+            for target in "${targets[@]}"; do
+
+                mkdir -p "$target"
+
+                rm -rf "$target/$uuid"
+                cp -a "$uuid_dir" "$target/$uuid"
+
+                chown -R root:root "$target/$uuid"
+                find "$target/$uuid" -type d -exec chmod 755 {} \;
+                find "$target/$uuid" -type f -exec chmod 644 {} \;
+
+                echo "   ✅ $target/$uuid"
+            done
+        fi
 
         echo "$uuid" >> /tmp/.installed_extension_uuids
 
@@ -709,7 +783,7 @@ install_gnome_extension_systemwide() {
         return 1
     fi
 
-    echo "✅ Extensão(ões) instalada(s) em HOST + JAIL."
+    echo "✅ Extensão(ões) instalada(s)/confirmada(s) em HOST + JAIL."
 }
 
 # =========================================================
@@ -797,6 +871,111 @@ EOF
 
     if [[ "$overall_ok" -eq 1 ]]; then
         echo "✅ enabled-extensions aplicado (HOST + JAIL)."
+    else
+        echo "⚠️ Uma ou mais bases dconf não foram compiladas com sucesso."
+        return 1
+    fi
+}
+
+# =========================================================
+# 🎛️ CONFIGURAÇÕES DAS EXTENSÕES (DOCK, ETC.) — SYSTEM-WIDE
+# =========================================================
+# O 'enabled-extensions' (configure_dconf_systemwide_extension)
+# só diz QUAIS extensões ficam ativas. Isso aqui exporta os
+# VALORES configurados por $USERNAME em cada extensão — posição
+# do dock, ícones fixados, tamanho, etc. — que ficam sob:
+#
+#   /org/gnome/shell/extensions/<nome-da-extensao>/...
+#
+# e aplica como padrão system-wide (HOST + JAIL), do mesmo jeito
+# que já é feito para o perfil do Terminal (Ptyxis) logo abaixo.
+# =========================================================
+configure_extension_settings_systemwide() {
+
+    echo
+    echo "🎛️ Exportando configurações das extensões (dock, etc.) de $USERNAME..."
+    echo
+
+    local dump_tmp rewritten_tmp
+    dump_tmp="$(mktemp)"
+    rewritten_tmp="$(mktemp)"
+
+    if ! runuser -u "$USERNAME" -- \
+        env HOME="$USER_HOME" \
+        dconf dump /org/gnome/shell/extensions/ > "$dump_tmp"
+    then
+        echo "⚠️ Não foi possível exportar configurações de extensões de $USERNAME."
+        rm -f "$dump_tmp" "$rewritten_tmp"
+        return 1
+    fi
+
+    if [[ ! -s "$dump_tmp" ]]; then
+        echo "⚠️ Dump de configurações de extensões veio vazio. Nada a aplicar."
+        rm -f "$dump_tmp" "$rewritten_tmp"
+        return 0
+    fi
+
+    # -----------------------------------------------------
+    # Reescreve cabeçalhos de grupo para caminho absoluto
+    # -----------------------------------------------------
+    awk '
+        $0 == "[/]" {
+            print "[org/gnome/shell/extensions]"
+            next
+        }
+        /^\[.*\]$/ {
+            sub(/^\[/, "[org/gnome/shell/extensions/")
+            print
+            next
+        }
+        { print }
+    ' "$dump_tmp" > "$rewritten_tmp"
+
+    rm -f "$dump_tmp"
+
+    local roots=("" "$JAIL_PATH")
+    local root db_dir dconf_db_dir profile_dir
+    local overall_ok=1
+
+    for root in "${roots[@]}"; do
+
+        local etc_dir="${root}/etc/dconf"
+        db_dir="$etc_dir/db"
+        dconf_db_dir="$db_dir/local.d"
+        profile_dir="$etc_dir/profile"
+
+        mkdir -p "$dconf_db_dir" "$profile_dir"
+
+        if [[ ! -f "$profile_dir/user" ]]; then
+            cat > "$profile_dir/user" <<'EOF'
+user-db:user
+system-db:local
+EOF
+        fi
+
+        cp "$rewritten_tmp" "$dconf_db_dir/02-extension-settings"
+
+        if [[ -z "$root" ]]; then
+            if dconf update; then
+                echo "✅ Configurações de extensões aplicadas no HOST."
+            else
+                echo "⚠️ Falha ao rodar 'dconf update' no HOST."
+                overall_ok=0
+            fi
+        else
+            if dconf update "$db_dir"; then
+                echo "✅ Configurações de extensões aplicadas na JAIL ($db_dir)."
+            else
+                echo "⚠️ Falha ao rodar 'dconf update' apontando para $db_dir"
+                overall_ok=0
+            fi
+        fi
+    done
+
+    rm -f "$rewritten_tmp"
+
+    if [[ "$overall_ok" -eq 1 ]]; then
+        echo "✅ Configurações de extensões (dock, etc.) persistidas (HOST + JAIL), a partir de $USERNAME."
     else
         echo "⚠️ Uma ou mais bases dconf não foram compiladas com sucesso."
         return 1
@@ -925,9 +1104,10 @@ main() {
 
     install_gnome_extension_systemwide     
     configure_dconf_systemwide_extension
+    configure_extension_settings_systemwide
     configure_terminal_profile_systemwide
     remove_unwanted_content
-
+    
     configure_permissions
     validate_result
     show_summary
