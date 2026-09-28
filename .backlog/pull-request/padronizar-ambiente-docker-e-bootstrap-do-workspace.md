@@ -5,7 +5,7 @@ title: "PR(#16)-Padronizar Ambiente Docker e Bootstrap do Workspace"
 branch: feature/padronizar-ambiente-docker-e-bootstrap-do-workspace
 base: main
 extends: feature-04-padronizar-ambiente-docker-e-bootstrap-do-workspace
-status: open
+status: merged
 ---
 
 # Padronizar Ambiente Docker e Bootstrap do Workspace
