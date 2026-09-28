@@ -2,9 +2,9 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Update Submodules",
+            "label": "Bootstrap Repository",
             "type": "shell",
-            "command": "if [ -f .git/config.lock ]; then rm -f .git/config.lock; fi && git submodule sync --recursive && git submodule update --init --remote --force .ai",
+            "command": "${workspaceFolder}/.ai/tools/bootstrap.sh",
             "problemMatcher": [],
             "runOptions": {
                 "runOn": "folderOpen"
