@@ -3,10 +3,10 @@
 # 🔐 JailKit Shared ADMIN User Creator (sudo SOMENTE dentro da jail)
 # =========================================================
 # Uso:
-#   sudo ./create-jail-su-user <usuario>
+#   sudo ./jail-create <usuario>
 #
 # Exemplo:
-#   sudo ./create-jail-su-user codex-admin
+#   sudo ./jail-create codex-admin
 #
 # O usuário recebe:
 #   - sudo NOPASSWD SOMENTE dentro da jail
@@ -147,7 +147,7 @@ create_user() {
         -m \
         -k "$JAIL_SKEL" \
         -c "$full_name" \
-        -d "$JAIL_PATH/./home/$USERNAME" \
+        -d "$JAIL_PATH/home/$USERNAME" \
         -s /usr/bin/zsh \
         -U \
         -G "$GROUP_NAME,$EXTRA_HOST_GROUPS" \
@@ -358,7 +358,7 @@ configure_home() {
         "$home/.bash_logout" \
         "$home/.Xauthority"
 
-    chown -R "$USERNAME:$GROUP_NAME" "$home"
+    chown -R "$USERNAME:$USERNAME" "$home"
 
     chmod 750 "$home"
 
@@ -429,9 +429,9 @@ create_shared_folder() {
     if ! mountpoint -q "$dst"; then
         if ! bindfs \
             --force-user="$USERNAME" \
-            --force-group="$group" \
+            --force-group="$USERNAME" \
             --create-for-user="$USERNAME" \
-            --create-for-group="$group" \
+            --create-for-group="$USERNAME" \
             "$src" \
             "$dst"
         then
@@ -775,7 +775,7 @@ main() {
     create_shared_folder \
         "$JAIL_PATH/workspace" \
         "$USER_HOME/workspace"
-
+    
     if [[ -x /usr/local/bin/jail-mounts ]]; then
         /usr/local/bin/jail-mounts
     else
