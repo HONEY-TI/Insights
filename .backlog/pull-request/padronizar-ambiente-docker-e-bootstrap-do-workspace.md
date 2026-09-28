@@ -19,9 +19,9 @@ rotinas de criação, remoção e preparação da jail e documentação operacio
 
 - Branch: `feature/padronizar-ambiente-docker-e-bootstrap-do-workspace`
 - Base: `main`
-- Commits de conteúdo: 9
+- Commits totais na branch: 11 (10 de conteúdo + 1 inicial vazio)
 - Arquivos alterados: 9
-- Alterações: 1199 inserções, 93 remoções
+- Alterações: 1221 inserções, 93 remoções
 
 ## Commits
 
