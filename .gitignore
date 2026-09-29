@@ -379,12 +379,45 @@ TODO*
 
 # JetBrains Rider
 *.sln.iml
+**/.idea/
+**/.fleet/
+
+# Arquivos temporários / sistema
 **/.Trash*
 **/tmp/
-**/.blackbox/
+**/.DS_Store/
+
+# Ferramentas de IA
+**/.ai/
 **/.claude/
 **/.codex/
-**/AGENTS.md
+**/.gemini/
+**/.copilot/
+**/.cursor/
+**/.windsurf/
+**/.continue/
+**/.aider/
 **/.openclaude/
+**/.blackbox/
+
+# Arquivos de instruções para IAs
+**/AGENTS.md
+**/CLAUDE.md
+**/GEMINI.md
+**/AI.md
+**/.cursorrules
+**/.windsurfrules
+
+# Variáveis de ambiente
 *.env
-.ai/
+*.env.*
+!.env.example
+
+# Configurações locais
+*.local
+**/.local/
+
+# Logs
+*.log
+**/logs/
+**/.backlog/pull-request/
