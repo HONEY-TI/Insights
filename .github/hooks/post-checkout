@@ -1,6 +1,49 @@
 #!/usr/bin/env bash
 
-if [ -f .gitmodules ]; then
-  echo "🔄 Syncing submodules..."
-  git submodule update --init --recursive
+set -e
+
+echo "🚀 [Insights] Starting full repository bootstrap..."
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+AI_PATH=".ai"
+AI_REPOSITORY="git@github.com:HONEY-TI/.ai.git"
+BOOTSTRAP_PATH="$AI_PATH/tools/bootstrap.sh"
+
+echo "🔄 Verificando submodule .ai..."
+
+# Verificar se o submodule .ai já está configurado.
+if ! git config --file .gitmodules --get-regexp '^submodule\.ai\.' >/dev/null 2>&1; then
+  echo "📦 Submodule .ai não configurado. Adicionando..."
+
+  git submodule add "$AI_REPOSITORY"
+fi
+
+# Inicializar/atualizar o submodule.
+if [ ! -d "$AI_PATH" ]; then
+  echo "🔄 Inicializando submodule .ai..."
+
+  git submodule update --init --recursive "$AI_PATH"
+fi
+
+# Validar se o submodule foi inicializado.
+if [ ! -d "$AI_PATH" ]; then
+  echo "❌ ERRO: não foi possível inicializar o submodule .ai."
+  exit 1
+fi
+
+echo "✅ Submodule .ai disponível."
+
+# Executar bootstrap.
+if [ -f "$BOOTSTRAP_PATH" ]; then
+  echo "🔧 Executando $BOOTSTRAP_PATH..."
+
+  if [ -x "$BOOTSTRAP_PATH" ]; then
+    "$BOOTSTRAP_PATH"
+  else
+    bash "$BOOTSTRAP_PATH"
+  fi
+else
+  echo "⚠️ Bootstrap não encontrado: $BOOTSTRAP_PATH"
 fi
