@@ -1,12 +1,14 @@
 #!/bin/bash
 set -e
 
-readonly USER=node
+readonly USER="${EXPECTED_USER:-node}"
 readonly PROJECT_WORKSPACE=/workspace
 
 # ── Realinhar UID/GID do node com o dono do $PROJECT_WORKSPACE ───────────────
-HOST_UID=$(stat -c '%u' $PROJECT_WORKSPACE)
-HOST_GID=$(stat -c '%g' $PROJECT_WORKSPACE)
+
+HOST_UID=$(stat -c '%u' "$PROJECT_WORKSPACE")
+HOST_GID=$(stat -c '%g' "$PROJECT_WORKSPACE")
+
 CURRENT_UID=$(id -u "$USER")
 CURRENT_GID=$(id -g "$USER")
 
@@ -23,12 +25,14 @@ if [ "$HOST_UID" != "$CURRENT_UID" ]; then
     usermod -o -u "$HOST_UID" "$USER"
 fi
 
-chown -R "$USER:$USER" /home/$USER 2>/dev/null || true
-chown -R "$USER:$USER" /home/$USER/.vscode-server 2>/dev/null || true
+chown -R "$USER:$USER" "/home/$USER" 2>/dev/null || true
+chown -R "$USER:$USER" "/home/$USER/.vscode-server" 2>/dev/null || true
 
-if [ "$(stat -c '%u:%g' $PROJECT_WORKSPACE)" != "$HOST_UID:$HOST_GID" ]; then
-    chown "$USER:$USER" $PROJECT_WORKSPACE 2>/dev/null || true
+if [ "$(stat -c '%u:%g' "$PROJECT_WORKSPACE")" != "$HOST_UID:$HOST_GID" ]; then
+    chown "$USER:$USER" "$PROJECT_WORKSPACE" 2>/dev/null || true
 fi
 
 # ── Processo original do container ──────────────────────────────────
+#cd $PROJECT_WORKSPACE
+#exec su - "$USER"
 exec "$@"
