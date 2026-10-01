@@ -1,6 +1,6 @@
 # <img src="https://images.icon-icons.com/2088/PNG/512/br_icon_128192.png" width="32"> 🧠 Insights to Create a Mono Repo
 
-**Versão em inglês:** [README](./.github/README.md)
+**Versão em inglês:** [README](../README.md)
 
 ## Repositório central de conhecimento, processos e materiais de projetos.
 
@@ -106,3 +106,8 @@ Arquitetura de sistemas, integrações, contratos, dependências, definições d
 
 ### 🔧 .github
 #### Centralização de workflows, automações, templates, hooks, pipelines e configurações compartilhadas do ecossistema.
+
+
+## ⚖️ Licença
+
+Consulte o arquivo de [`Licença`](../LICENSE). Antes de publicar ou redistribuir, revise os termos aplicaveis e garanta que eles estejam consistentes com a intencao juridica do projeto.
