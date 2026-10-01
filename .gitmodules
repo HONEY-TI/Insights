@@ -6,30 +6,27 @@
 [submodule "projects/prj-infnet-lite-streaming"]
 	path = projects/prj-infnet-lite-streaming
 	url = git@github.com:HONEY-TI/prj-infnet-lite-streaming.git
-    branch = develop
-	
+
 [submodule "projects/prj-pix-charge"]
 	path = projects/prj-pix-charge
-	url = git@github.com:HONEY-TI/prj-pix-charge.git
-	branch = develop
+	url = git@github.com:HONEY-TI/prj-infnet-pix-charge.git
 
 [submodule "projects/prj-gestao-empresarial"]
 	path = projects/prj-gestao-empresarial
 	url = git@github.com:HONEY-TI/prj-gestao-empresarial.git
-	branch = develop
 	
 [submodule "projects/prj-estacio-rstudio-jupyter"]
 	path = projects/prj-estacio-rstudio-jupyter
 	url = git@github.com:HONEY-TI/prj-estacio-rstudio-jupyter.git
-	branch = main
+
 [submodule "projects/app-ai-assistants"]
 	path = projects/app-ai-assistants
 	url = git@github.com:HONEY-TI/app-ai-assistants.git
-	branch = develop
+
 [submodule ".ai"]
 	path = .ai
 	url = git@github.com:HONEY-TI/.ai.git
-	branch = main
+
 [submodule "projects/prj-estacio-despesas-pessoais"]
 	path = projects/prj-estacio-despesas-pessoais
 	url = git@github.com:HONEY-TI/prj-estacio-despesas-pessoais.git
