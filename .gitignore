@@ -1,10 +1,4 @@
 # ================================
-# FIRST in tihs HELL • 1998 → AFTER
-“ Estrutura gerada com auxílio de IA” não é uma metodologia nova por si só. 
-" É uma declaração de origem e transparência, não um padrão técnico de engenharia.
-# ================================
-
-# ================================
 # SECURITY / SECRETS
 # ================================
 .env
@@ -421,3 +415,12 @@ TODO*
 *.log
 **/logs/
 **/.backlog/pull-request/
+
+# Streamlit
+.streamlit/secrets.toml
+**/.codex/
+**/AGENTS.md
+.codex/
+**/pull-request/**
+
+!**/lib/
