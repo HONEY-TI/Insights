@@ -9,11 +9,11 @@
 #   - Fixed: Invalid IP in loop uses continue instead of exit 1
 #   - Added: VS Code WebView/Service Worker domains
 #   - Added: Groq, Anthropic, npm registry domains
-#   - Added: Ollama interno (hostname docker-compose "ollama"), com fallback via getent
-#            para resolução via DNS embutido do Docker (127.0.0.11), pois "dig" nem
-#            sempre retorna resposta parseável para nomes internos de container.
-
 set -euo pipefail
+
+readonly PROJECT_WORKSPACE=/workspace
+readonly EXPECTED_USER="${1:-${EXPECTED_USER:-node}}"
+
 IFS=$'\n\t'
 
 # ─── 1. Extrair regras DNS do Docker ANTES de limpar ─────────────────────────
@@ -108,6 +108,13 @@ ALLOWED_DOMAINS=(
     "origin-tracker.githubusercontent.com"
     "copilot-telemetry.githubusercontent.com"
     "collector.github.com"
+    "chat.openai.com"    
+    "cdn.oaistatic.com"
+    "persistent.oaistatic.com"
+    "files.oaiusercontent.com"
+    "chatgptusercontent.com"
+    "ab.chatgpt.com"
+
 
     # npm
     "registry.npmjs.org"
@@ -118,26 +125,6 @@ ALLOWED_DOMAINS=(
 
     # Groq
     "api.groq.com"
-
-    # OpenAI
-    "api.openai.com"
-    "chatgpt.com"
-    "chat.openai.com"
-    "auth.openai.com"
-    "cdn.oaistatic.com"
-    "persistent.oaistatic.com"
-    "files.oaiusercontent.com"
-    "chatgptusercontent.com"
-    "ab.chatgpt.com"
-
-
-    # Blackbox AI
-    "blackbox.ai"
-    "api.blackbox.ai"
-    "cdn.blackbox.ai"
-    "assets.blackbox.ai"
-    "chat.blackbox.ai"
-    "app.blackbox.ai"
 
     # Microsoft / VS Code marketplace e updates
     "login.microsoftonline.com"
@@ -212,60 +199,6 @@ for domain in "${ALLOWED_DOMAINS[@]}"; do
     done < <(echo "$ips")
 done
 
-# ─── 9.1 Ollama interno (hostname docker-compose) ────────────────────────────
-# "ollama" não é um domínio público: só resolve via DNS embutido do Docker
-# (127.0.0.11), e apenas se este container estiver anexado à mesma network
-# do serviço "ollama" (ex: "ollama-network" no docker-compose). O "dig" pode
-# falhar silenciosamente para nomes internos, então usamos "getent hosts"
-# como método primário, com "dig" como fallback.
-echo "Resolving internal host 'ollama'..."
-OLLAMA_IPS=$(getent hosts ollama 2>/dev/null | awk '{print $1}' | sort -u || true)
-
-if [ -z "$OLLAMA_IPS" ]; then
-    OLLAMA_IPS=$(dig +noall +answer A ollama 2>/dev/null | awk '$4 == "A" {print $5}')
-fi
-
-if [ -z "$OLLAMA_IPS" ]; then
-    echo "WARNING: Could not resolve 'ollama' — este container provavelmente não está" \
-         "anexado à rede 'ollama-network'. Acesso a http://ollama:11434 NÃO será liberado."
-else
-    while read -r ip; do
-        if [[ ! "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-            echo "WARNING: Invalid IP from DNS for 'ollama': $ip — skipping"
-            continue
-        fi
-        echo "Adding $ip for 'ollama' (porta 11434 liberada via ipset)"
-        ipset add allowed-domains "$ip" -exist
-    done < <(echo "$OLLAMA_IPS")
-fi
-
-# ─── 9.2 redis interno (hostname docker-compose) ────────────────────────────
-# "redis" não é um domínio público: só resolve via DNS embutido do Docker
-# (127.0.0.11), e apenas se este container estiver anexado à mesma network
-# do serviço "redis" (ex: "redis-network" no docker-compose). O "dig" pode
-# falhar silenciosamente para nomes internos, então usamos "getent hosts"
-# como método primário, com "dig" como fallback.
-echo "Resolving internal host 'redis'..."
-redis_IPS=$(getent hosts redis 2>/dev/null | awk '{print $1}' | sort -u || true)
-
-if [ -z "$redis_IPS" ]; then
-    redis_IPS=$(dig +noall +answer A redis 2>/dev/null | awk '$4 == "A" {print $5}')
-fi
-
-if [ -z "$redis_IPS" ]; then
-    echo "WARNING: Could not resolve 'redis' — este container provavelmente não está" \
-         "anexado à rede 'redis-network'. Acesso a http://redis:6379 NÃO será liberado."
-else
-    while read -r ip; do
-        if [[ ! "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-            echo "WARNING: Invalid IP from DNS for 'redis': $ip — skipping"
-            continue
-        fi
-        echo "Adding $ip for 'redis' (porta 11434 liberada via ipset)"
-        ipset add allowed-domains "$ip" -exist
-    done < <(echo "$redis_IPS")
-fi
-
 # ─── 10. Detectar rede do host ───────────────────────────────────────────────
 HOST_IP=$(ip route | grep default | cut -d" " -f3)
 if [ -z "$HOST_IP" ]; then
@@ -315,5 +248,7 @@ iptables -A INPUT  -j DROP
 
 # ─── 13. Verificação final ───────────────────────────────────────────────────
 echo "🛡️ Firewall configuration complete"
-sleep 3
-exit
+sleep 2 
+clear
+cd $PROJECT_WORKSPACE
+exec su - $EXPECTED_USER

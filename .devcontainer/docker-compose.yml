@@ -1,14 +1,16 @@
  #ssh -T github-alexfaria #ssh -T gitlab-alexfaria
 services:
-  app:
+  insights:
     container_name: insights-devcontainer
     image: insights-devcontainer:latest
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      "args": { "USERNAME": "node" }
     environment:
       NODE_OPTIONS: "--max-old-space-size=4096"
       GITHUB_TOKEN: ${GITHUB_TOKEN}      
+      XAUTHORITY: /tmp/.mutter-Xwaylandauth
     env_file:
       - .env
     volumes:
