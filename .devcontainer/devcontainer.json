@@ -3,14 +3,21 @@
   "dockerComposeFile": [
     "docker-compose.yml"
   ],
-  "service": "app",
+  "service": "insights",
   "workspaceFolder": "/workspace",
   "remoteUser": "node",
   "updateRemoteUserUID": false,
-  "postCreateCommand": "sudo /usr/local/bin/setup-codex.sh",
-  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && codex",
+  "initializeCommand": "cp -f \"$XAUTHORITY\" /tmp/.mutter-Xwaylandauth-devc && chmod 644 /tmp/.mutter-Xwaylandauth-devc",
+  "postCreateCommand": "setup-codex.sh",
+  "postStartCommand": "sudo post-start.sh",
   "shutdownAction": "stopCompose",
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "XAUTHORITY": "/tmp/.mutter-Xwaylandauth-devc"
+  },
   "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+    "source=/tmp/.mutter-Xwaylandauth-devc,target=/tmp/.mutter-Xwaylandauth,type=bind,readonly",
     "type=volume,target=/home/node/.vscode-server",
     "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind"
   ],
