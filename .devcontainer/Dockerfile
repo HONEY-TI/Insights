@@ -2,6 +2,8 @@ FROM alexfariakof/node-base:latest AS base
 USER root
 ARG USERNAME=node
 ENV USERNAME=${USERNAME}
+ARG WORKSPACE=/workspace
+ENV WORKSPACE=${WORKSPACE}
 
 # ==========================================
 # Dependências do sistema
@@ -22,8 +24,7 @@ RUN apt-get update \
         xauth \
         xclip \
         xsel \
-        # sandbox 
-        
+        # sandbox         
         bubblewrap \ 
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -43,9 +44,9 @@ RUN mkdir -p /home/${USERNAME}/.vscode-server  \
     && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.vscode-server  \
     && chmod 700 /home/${USERNAME}/.vscode-server 
 
-COPY .devcontainer/post-start.sh /usr/local/sbin/post-start.sh
-COPY .devcontainer/docker-entrypoint.sh /usr/local/sbin/docker-entrypoint.sh
-COPY ./.ai/tools/bootstrap.sh /usr/local/sbin/setup-codex.sh
+COPY .ai/tools/post-start.sh /usr/local/sbin/post-start.sh
+COPY .ai/tools/docker-entrypoint.sh /usr/local/sbin/docker-entrypoint.sh
+COPY .ai/setup-codex-any-user.sh /usr/local/sbin/setup-codex.sh
 
 RUN chmod 755 /usr/local/sbin/post-start.sh \
             /usr/local/sbin/docker-entrypoint.sh \
@@ -55,6 +56,9 @@ RUN chmod +x /usr/local/sbin/post-start.sh \
             /usr/local/sbin/docker-entrypoint.sh \
             /usr/local/sbin/setup-codex.sh
 
+# =============================================================================
+# GIT CONFIG
+# =============================================================================
 RUN mkdir -p /home/${USERNAME} && \
     printf '[user]\n    name = Alex Ribeiro de Faria\n    email = 135660435+alexribeirofaria@github.com\n' \
     > /home/${USERNAME}/.gitconfig && \
@@ -69,19 +73,6 @@ RUN echo "${USERNAME} ALL=(root) NOPASSWD: \
     && chmod 0440 /etc/sudoers.d/${USERNAME}-dev \
     && visudo -cf /etc/sudoers.d/${USERNAME}-dev
 
-#RUN cp -r /etc/bash.bashrc /home/${USERNAME}/.bashrc \
-#    && chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.bashrc
-
-# =============================================================================
-# GITHUB SET
-# ============================================================================
-ARG GITHUB_TOKEN
-RUN if [ -n "$GITHUB_TOKEN" ]; then \
-        echo "${GITHUB_TOKEN}" | gh auth login --with-token || echo "gh auth falhou, seguindo sem autenticar"; \
-    else \
-        echo "GITHUB_TOKEN não fornecido, pulando gh auth login"; \
-    fi
-    
 # =============================================================================
 # 🔄 AUTO SWITCH — ROOT ➜ node
 # =============================================================================
@@ -103,5 +94,5 @@ RUN if [ "$ENABLE_SWITCH_USER" = "true" ]; then \
         echo "⏭️  Auto switch root ➜ ${USERNAME}: DESATIVADO"; \
     fi
 
-WORKDIR /workspace
+WORKDIR ${WORKSPACE}
 ENTRYPOINT ["docker-entrypoint.sh"]
