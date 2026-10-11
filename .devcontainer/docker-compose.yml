@@ -6,7 +6,7 @@ services:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
-      "args": { "USERNAME": "node" }
+      "args": { "USERNAME": "node", "WORKSPACE":"/workspace" }
     environment:
       NODE_OPTIONS: "--max-old-space-size=4096"
       GITHUB_TOKEN: ${GITHUB_TOKEN}      
