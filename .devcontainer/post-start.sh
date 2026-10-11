@@ -10,10 +10,6 @@
 #   - Added: VS Code WebView/Service Worker domains
 #   - Added: Groq, Anthropic, npm registry domains
 set -euo pipefail
-
-readonly PROJECT_WORKSPACE=/workspace
-readonly EXPECTED_USER="${1:-${EXPECTED_USER:-node}}"
-
 IFS=$'\n\t'
 
 # ─── 1. Extrair regras DNS do Docker ANTES de limpar ─────────────────────────
@@ -85,7 +81,7 @@ done
 # ─── 8. Domínios permitidos (sem duplicatas) ─────────────────────────────────
 ALLOWED_DOMAINS=(
 
-    # OpenAI Codex / API
+    # OpenAI Codex / API / ChatGPT
     "api.openai.com"
     "codex.openai.com"
     "openai.com"
@@ -97,6 +93,9 @@ ALLOWED_DOMAINS=(
     "cdn.oaistatic.com"
     "persistent.oaistatic.com"
     "chatgpt.com"
+    "chat.openai.com"
+    "files.oaiusercontent.com"
+    "chatgptusercontent.com"
 
     # GitHub
     "api.github.com"
@@ -105,48 +104,38 @@ ALLOWED_DOMAINS=(
     "objects.githubusercontent.com"
     "githubusercontent.com"
     "copilot-proxy.githubusercontent.com"
-    "origin-tracker.githubusercontent.com"
-    "copilot-telemetry.githubusercontent.com"
-    "collector.github.com"
-    "chat.openai.com"    
-    "cdn.oaistatic.com"
-    "persistent.oaistatic.com"
-    "files.oaiusercontent.com"
-    "chatgptusercontent.com"
-    "ab.chatgpt.com"
-
 
     # npm
     "registry.npmjs.org"
 
     # Anthropic / Claude
-    "api.anthropic.com"
-    "statsig.anthropic.com"
+    #"api.anthropic.com"
+    #"statsig.anthropic.com"
 
     # Groq
     "api.groq.com"
 
     # Microsoft / VS Code marketplace e updates
-    "login.microsoftonline.com"
-    "mobile.events.data.microsoft.com"
-    "marketplace.visualstudio.com"
-    "vscode.blob.core.windows.net"
-    "update.code.visualstudio.com"
-    "gallerycdn.vsassets.io"
-    "vscode-cdn.net"
+    "marketplace.visualstudio.com"   # API do Marketplace (listar/instalar extensões)
+    "vscode.blob.core.windows.net"   # download do pacote .vsix da extensão
+    "gallerycdn.vsassets.io"         # CDN da galeria de extensões
     "cdn1.vsassets.io"
     "cdn2.vsassets.io"
-    "az764295.vo.msecnd.net"
+    "vscode-cdn.net"
+    "update.code.visualstudio.com"   # download do vscode-server dentro do container
     "download.visualstudio.microsoft.com"
-    "dc.services.visualstudio.com"
-    "visualstudio-devdiv-c2s.msedge.net"
+    #"az764295.vo.msecnd.net"        # CDN antigo, geralmente não é mais usado
+    #"login.microsoftonline.com"     # só se usar login MS (Settings Sync, etc)
+    #"mobile.events.data.microsoft.com"  # telemetria — não precisa
+    #"dc.services.visualstudio.com"      # telemetria — não precisa
+    #"visualstudio-devdiv-c2s.msedge.net" # telemetria — não precisa
 
     # VS Code sync e WebView / Service Worker
-    "vscode-sync.trafficmanager.net"
-    "vscode-sync-insiders.trafficmanager.net"
-    "wus2.vscode-unpkg.net"
-    "vscode.dev"
-    "insiders.vscode.dev"
+    #"vscode-sync.trafficmanager.net"       # só se usar Settings Sync
+    #"vscode-sync-insiders.trafficmanager.net"
+    "wus2.vscode-unpkg.net"           # serve assets de webview de algumas extensões (ex: temas, ícones)
+    #"vscode.dev"                     # só se usar vscode.dev no browser
+    #"insiders.vscode.dev"
 
 )
 
@@ -243,12 +232,15 @@ iptables -P OUTPUT  DROP
 iptables -A INPUT  -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT
+
+# Redis: liberar porta TCP 6379, independentemente do IP
+iptables -A OUTPUT -p tcp --dport 6379 -j ACCEPT
+
+
 iptables -A OUTPUT -j REJECT --reject-with icmp-admin-prohibited
 iptables -A INPUT  -j DROP
 
 # ─── 13. Verificação final ───────────────────────────────────────────────────
-echo "🛡️ Firewall configuration complete"
-sleep 2 
-clear
-cd $PROJECT_WORKSPACE
-exec su - $EXPECTED_USER
+echo "🛡️ Firewall configuration complete !!!"
+sleep 2
+exit
