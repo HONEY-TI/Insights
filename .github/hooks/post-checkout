@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -e
 
-echo "🔄 [Insights] Inicializando submódulos..."
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
-cd "$PROJECT_ROOT"
+# Run only when switching branches or checking out a commit.
+[[ "${3:-0}" == "1" ]] || exit 0
 
-if [ -f "$PROJECT_ROOT/.gitmodules" ]; then
-  git submodule update --init --recursive
-  echo "✅ Submódulos disponíveis."
-else
-  echo "ℹ️ Nenhum arquivo .gitmodules encontrado."
-fi
+# Resolve the repository root.
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+# Execute the shared bootstrap.
+exec bash "$PROJECT_ROOT/.tools/bootstrap.sh"
