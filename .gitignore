@@ -424,3 +424,6 @@ TODO*
 **/pull-request/**
 
 !**/lib/
+!**/.gitkeep
+**/*.lock
+**/.xauth-devc
