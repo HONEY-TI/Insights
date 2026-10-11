@@ -6,18 +6,20 @@
   "service": "insights",
   "workspaceFolder": "/workspace",
   "remoteUser": "node",
-  "updateRemoteUserUID": false,
-  "initializeCommand": "cp -f \"$XAUTHORITY\" /tmp/.mutter-Xwaylandauth-devc && chmod 644 /tmp/.mutter-Xwaylandauth-devc",
+  "updateRemoteUserUID": true,
+  "overrideCommand": false,
+  "initializeCommand": "f=$(ls -t \"${XDG_RUNTIME_DIR}\"/.mutter-Xwaylandauth.* 2>/dev/null | head -n1); if [ -n \"$f\" ]; then cp \"$f\" .devcontainer/.xauth-devc; else : > .xauth-devc; fi",
   "postCreateCommand": "setup-codex.sh",
   "postStartCommand": "sudo post-start.sh",
   "shutdownAction": "stopCompose",
   "containerEnv": {
+    "IN_DEVCONTAINER": "true",
     "DISPLAY": "${localEnv:DISPLAY}",
-    "XAUTHORITY": "/tmp/.mutter-Xwaylandauth-devc"
+    "XAUTHORITY": "/tmp/.xauth-devc"
   },
   "mounts": [
     "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
-    "source=/tmp/.mutter-Xwaylandauth-devc,target=/tmp/.mutter-Xwaylandauth,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.devcontainer/.xauth-devc,target=/tmp/.xauth-devc,type=bind,readonly",
     "type=volume,target=/home/node/.vscode-server",
     "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind"
   ],
