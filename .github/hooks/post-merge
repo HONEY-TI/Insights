@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Resolve the repository root.
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+# Execute the shared bootstrap after a merge.
+exec bash "$PROJECT_ROOT/.tools/bootstrap.sh"
