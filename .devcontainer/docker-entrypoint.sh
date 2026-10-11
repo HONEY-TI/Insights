@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-readonly USER="${EXPECTED_USER:-node}"
+readonly USER="$(id -un 2>/dev/null || id -u)"
 readonly PROJECT_WORKSPACE=/workspace
 
 # ── Realinhar UID/GID do node com o dono do $PROJECT_WORKSPACE ───────────────
@@ -33,6 +33,4 @@ if [ "$(stat -c '%u:%g' "$PROJECT_WORKSPACE")" != "$HOST_UID:$HOST_GID" ]; then
 fi
 
 # ── Processo original do container ──────────────────────────────────
-#cd $PROJECT_WORKSPACE
-#exec su - "$USER"
 exec "$@"
