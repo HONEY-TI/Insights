@@ -10,16 +10,15 @@ services:
     environment:
       NODE_OPTIONS: "--max-old-space-size=4096"
       GITHUB_TOKEN: ${GITHUB_TOKEN}      
-      XAUTHORITY: /tmp/.mutter-Xwaylandauth
+      XAUTHORITY: /tmp/.xauth-devc
     env_file:
       - .env
     volumes:
       - ../:/workspace:cached
-      - vscode-extensions:/home/node/.vscode-server/extensions
+      - vscode-extensions-shared:/home/node/.vscode-server/extensions
     ports:
       - 3000:3000
       - 4200:4200
-      - 18789:18789
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -28,7 +27,6 @@ services:
       - apparmor=unconfined
       - seccomp:unconfined
     command: sleep infinity
-    #entrypoint: /usr/local/bin/docker-entrypoint.sh
     networks:
       - insights-network
     deploy:
@@ -45,9 +43,9 @@ services:
         max-file: "1"
 
 volumes:
-  vscode-extensions:
-    name: vscode-extensions-insights
+  vscode-extensions-shared:
+    external: true
+
 networks:
   insights-network:
-    name: insights-network
-    driver: bridge
+    external: true
