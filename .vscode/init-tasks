@@ -141,6 +141,56 @@ run_step() {
 }
 
 # ------------------------------------------------------------
+# Shell interativo
+# ------------------------------------------------------------
+
+detect_user_shell() {
+    local candidate configured_shell
+
+    configured_shell="$(getent passwd "$(id -un)" | cut -d: -f7 || true)"
+
+    for candidate in \
+        "$configured_shell" \
+        "${SHELL:-}" \
+        "$(command -v bash 2>/dev/null || true)" \
+        "$(command -v sh 2>/dev/null || true)"; do
+
+        [[ -n "$candidate" && -x "$candidate" ]] || continue
+
+        case "${candidate##*/}" in
+            bash|zsh|sh|dash|ash|fish)
+                printf '%s\n' "$candidate"
+                return 0
+                ;;
+        esac
+    done
+
+    return 1
+}
+
+open_shell() {
+    local user_shell
+
+    user_shell="$(detect_user_shell)" || {
+        log "ERRO: nenhum shell compatível encontrado"
+        exit 127
+    }
+
+    log "ABRINDO: ${user_shell}"
+
+    # Libera o lock para não ficar preso enquanto o terminal estiver aberto
+    flock -u 9 || true
+    exec 9>&-
+
+    # Remove o trap de erro e substitui o processo pelo shell
+    trap - ERR
+    clear
+    cd "$ROOT_DIR/.."
+    cd "workspace/"
+    exec "$user_shell" -i
+}
+
+# ------------------------------------------------------------
 # Main
 # ------------------------------------------------------------
 
@@ -166,3 +216,6 @@ log ""
 log "============================================================"
 log " INICIALIZAÇÃO CONCLUÍDA COM SUCESSO"
 log "============================================================"
+
+## 3. Shell interativo
+#open_shell
