@@ -3,7 +3,7 @@
     "tasks": [
         {
             "label": "Initialize Docker Servers",
-            "type": "shell",
+            "type": "process",
             "command": "${workspaceFolder}/.vscode/init-tasks",
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": [],
