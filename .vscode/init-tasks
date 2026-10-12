@@ -202,20 +202,20 @@ log "ROOT:  $ROOT_DIR"
 log "STATE: $STATE_DIR"
 log ""
 
-# 1. Repository Bootstrap
-run_step \
-    "Repository Bootstrap" \
-    "$BOOTSTRAP"
-
-# 2. Docker Infrastructure
+# 1. Docker Infrastructure
 run_step \
     "Docker Infra Initialize" \
     "$DOCKER_INFRA"
+
+# 2. Repository Bootstrap
+run_step \
+    "Repository Bootstrap" \
+    "$BOOTSTRAP"
 
 log ""
 log "============================================================"
 log " INICIALIZAÇÃO CONCLUÍDA COM SUCESSO"
 log "============================================================"
-
+exit
 ## 3. Shell interativo
 #open_shell
