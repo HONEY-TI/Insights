@@ -33,6 +33,11 @@
 	url = git@github.com:HONEY-TI/.ai.git
 	branch= main
 
+[submodule ".docker-infra"]
+	path = .docker-infra
+	url = git@github.com:HONEY-TI/.docker-infra.git
+	branch = main
+
 [submodule "projects/prj-estacio-despesas-pessoais"]
 	path = projects/prj-estacio-despesas-pessoais
 	url = git@github.com:HONEY-TI/prj-estacio-despesas-pessoais.git
