@@ -1,0 +1,221 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+# ============================================================
+# Sequential Repository Initialization
+# ============================================================
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+BOOTSTRAP="${ROOT_DIR}/.ai/tools/bootstrap.sh"
+DOCKER_INFRA="${ROOT_DIR}/.docker-infra/init-docker-infra"
+
+# Tempo máximo (segundos) aguardando outra inicialização terminar
+LOCK_TIMEOUT="${INIT_LOCK_TIMEOUT:-900}"
+
+LOCK_FILE=""
+LOG_FILE=""
+
+# ------------------------------------------------------------
+# Logging (nunca derruba o script se o log não for gravável)
+# ------------------------------------------------------------
+
+log() {
+    local msg
+    msg="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+
+    if [[ -n "$LOG_FILE" ]]; then
+        echo "$msg" | tee -a "$LOG_FILE" || true
+    else
+        echo "$msg"
+    fi
+}
+
+# ------------------------------------------------------------
+# Error handling
+# ------------------------------------------------------------
+
+on_error() {
+    local exit_code=$?
+    local line=$1
+
+    log "ERRO: execução interrompida na linha ${line} (exit=${exit_code})"
+    exit "$exit_code"
+}
+
+trap 'on_error $LINENO' ERR
+
+# ------------------------------------------------------------
+# Escolhe um diretório onde lock e log possam ser gravados
+# ------------------------------------------------------------
+
+pick_state_dir() {
+    local dir
+
+    for dir in "$ROOT_DIR" "${HOME:-}" "/tmp"; do
+        [[ -n "$dir" && -d "$dir" ]] || continue
+
+        if ( : >> "${dir}/.init-sequence.lock" ) 2>/dev/null \
+            && ( : >> "${dir}/.init-sequence.log" ) 2>/dev/null; then
+            echo "$dir"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+if ! STATE_DIR="$(pick_state_dir)"; then
+    echo "ERRO: nenhum diretório gravável para lock/log (testados: $ROOT_DIR, ${HOME:-}, /tmp)" >&2
+    exit 1
+fi
+
+LOCK_FILE="${STATE_DIR}/.init-sequence.lock"
+LOG_FILE="${STATE_DIR}/.init-sequence.log"
+
+if [[ "$STATE_DIR" != "$ROOT_DIR" ]]; then
+    echo "AVISO: ${ROOT_DIR} sem permissão de escrita, usando ${STATE_DIR}" >&2
+fi
+
+# ------------------------------------------------------------
+# Lock: aguarda outra inicialização terminar
+# ------------------------------------------------------------
+
+exec 9>>"$LOCK_FILE"
+
+if ! flock -n 9; then
+    log "AGUARDANDO: outra inicialização em execução (limite: ${LOCK_TIMEOUT}s)"
+    log "Lock: $LOCK_FILE"
+
+    if ! flock -w "$LOCK_TIMEOUT" 9; then
+        log "ERRO: tempo esgotado (${LOCK_TIMEOUT}s) aguardando a outra inicialização."
+        exit 1
+    fi
+
+    log "Outra inicialização terminou. Prosseguindo."
+fi
+
+# O lock é liberado automaticamente quando o script termina.
+# Não remover o arquivo de lock (evita condição de corrida).
+
+# ------------------------------------------------------------
+# Validate scripts
+# ------------------------------------------------------------
+
+validate_script() {
+    local script="$1"
+
+    if [[ ! -f "$script" ]]; then
+        log "ERRO: script não encontrado: $script"
+        exit 1
+    fi
+
+    if [[ ! -x "$script" ]]; then
+        log "ERRO: script não executável: $script"
+        log "Execute: chmod +x \"$script\""
+        exit 1
+    fi
+}
+
+# ------------------------------------------------------------
+# Execute one step
+# ------------------------------------------------------------
+
+run_step() {
+    local name="$1"
+    local script="$2"
+
+    log "============================================================"
+    log "INICIANDO: $name"
+    log "SCRIPT:    $script"
+    log "============================================================"
+
+    validate_script "$script"
+
+    "$script"
+
+    log "------------------------------------------------------------"
+    log "CONCLUÍDO: $name"
+    log "------------------------------------------------------------"
+}
+
+# ------------------------------------------------------------
+# Shell interativo
+# ------------------------------------------------------------
+
+detect_user_shell() {
+    local candidate configured_shell
+
+    configured_shell="$(getent passwd "$(id -un)" | cut -d: -f7 || true)"
+
+    for candidate in \
+        "$configured_shell" \
+        "${SHELL:-}" \
+        "$(command -v bash 2>/dev/null || true)" \
+        "$(command -v sh 2>/dev/null || true)"; do
+
+        [[ -n "$candidate" && -x "$candidate" ]] || continue
+
+        case "${candidate##*/}" in
+            bash|zsh|sh|dash|ash|fish)
+                printf '%s\n' "$candidate"
+                return 0
+                ;;
+        esac
+    done
+
+    return 1
+}
+
+open_shell() {
+    local user_shell
+
+    user_shell="$(detect_user_shell)" || {
+        log "ERRO: nenhum shell compatível encontrado"
+        exit 127
+    }
+
+    log "ABRINDO: ${user_shell}"
+
+    # Libera o lock para não ficar preso enquanto o terminal estiver aberto
+    flock -u 9 || true
+    exec 9>&-
+
+    # Remove o trap de erro e substitui o processo pelo shell
+    trap - ERR
+    clear
+    cd "$ROOT_DIR/.."
+    cd "workspace/"
+    exec "$user_shell" -i
+}
+
+# ------------------------------------------------------------
+# Main
+# ------------------------------------------------------------
+
+log ""
+log "============================================================"
+log " INICIALIZAÇÃO SEQUENCIAL"
+log "============================================================"
+log "ROOT:  $ROOT_DIR"
+log "STATE: $STATE_DIR"
+log ""
+
+# 1. Repository Bootstrap
+run_step \
+    "Repository Bootstrap" \
+    "$BOOTSTRAP"
+
+# 2. Docker Infrastructure
+run_step \
+    "Docker Infra Initialize" \
+    "$DOCKER_INFRA"
+
+log ""
+log "============================================================"
+log " INICIALIZAÇÃO CONCLUÍDA COM SUCESSO"
+log "============================================================"
+
+## 3. Shell interativo
+#open_shell

@@ -2,17 +2,19 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Bootstrap Repository",
+            "label": "Initialize Docker Servers",
             "type": "shell",
-            "command": "${workspaceFolder}/.ai/tools/bootstrap.sh",
+            "command": "${workspaceFolder}/.vscode/init-tasks",
+            "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": [],
-            "runOptions": {
-                "runOn": "folderOpen"
-            },
+            "runOptions": { "runOn": "folderOpen" },
             "presentation": {
-                "reveal": "always",
+                "reveal": "silent",
                 "panel": "dedicated",
-                "close": true
+                "focus": false,
+                "close": true,
+                "showReuseMessage": false,
+                "echo": false
             }
         }
     ]
