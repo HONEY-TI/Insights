@@ -7,19 +7,20 @@
   "workspaceFolder": "/workspace",
   "remoteUser": "node",
   "updateRemoteUserUID": true,
-  "overrideCommand": false,
+  "overrideCommand": true,
   "initializeCommand": "f=$(ls -t \"${XDG_RUNTIME_DIR}\"/.mutter-Xwaylandauth.* 2>/dev/null | head -n1); if [ -n \"$f\" ]; then cp \"$f\" .devcontainer/.xauth-devc; else : > .xauth-devc; fi",
   "postCreateCommand": "bash setup-codex.sh",
-  "postStartCommand": "sudo post-start.sh ",  
-  "shutdownAction": "stopCompose",
+  "updateContentCommand": "sudo post-start.sh ",
+  "waitFor": "updateContentCommand",
+  "postStartCommand": "open-user-shell.sh",
   "containerEnv": {
     "IN_DEVCONTAINER": "true",
     "DISPLAY": "${localEnv:DISPLAY}",
     "XAUTHORITY": "/tmp/.xauth-devc"
   },
-  "remoteEnv": {
-    "GH_TOKEN": "${containerEnv:GITHUB_TOKEN}"
-  },
+  //"remoteEnv": {
+  //  "GITHUB_TOKEN": "${containerEnv:GITHUB_TOKEN}"
+  //},
   "mounts": [
     "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
     "source=${localWorkspaceFolder}/.devcontainer/.xauth-devc,target=/tmp/.xauth-devc,type=bind,readonly",

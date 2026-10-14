@@ -3,6 +3,8 @@ services:
   insights:
     container_name: insights-devcontainer
     image: insights-devcontainer:latest
+    tty: true
+    stdin_open: true    
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
@@ -11,9 +13,7 @@ services:
         WORKSPACE: /workspace
     environment:
       NODE_OPTIONS: "--max-old-space-size=4096"
-      #GITHUB_TOKEN: ${GITHUB_TOKEN}      
-      GH_TOKEN: ${GITHUB_TOKEN:?GITHUB_TOKEN não definido no .env}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:?GITHUB_TOKEN não definido no .env}  
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?GITHUB_TOKEN não definido no .env}
       XAUTHORITY: /tmp/.xauth-devc
     env_file:
       - .env
@@ -30,7 +30,6 @@ services:
     security_opt:
       - apparmor=unconfined
       - seccomp:unconfined
-    tty: true
     command: sleep infinity
     networks:
       - insights-network
