@@ -9,7 +9,6 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 BOOTSTRAP="${ROOT_DIR}/.ai/tools/bootstrap.sh"
-DOCKER_INFRA="${ROOT_DIR}/.docker-infra/init-docker-infra"
 
 # Tempo máximo (segundos) aguardando outra inicialização terminar
 LOCK_TIMEOUT="${INIT_LOCK_TIMEOUT:-900}"
@@ -202,12 +201,7 @@ log "ROOT:  $ROOT_DIR"
 log "STATE: $STATE_DIR"
 log ""
 
-# 1. Docker Infrastructure
-run_step \
-    "Docker Infra Initialize" \
-    "$DOCKER_INFRA"
-
-# 2. Repository Bootstrap
+# 1. Repository Bootstrap
 run_step \
     "Repository Bootstrap" \
     "$BOOTSTRAP"
@@ -217,5 +211,6 @@ log "============================================================"
 log " INICIALIZAÇÃO CONCLUÍDA COM SUCESSO"
 log "============================================================"
 exit
-## 3. Shell interativo
+
+## 2. Shell interativo
 #open_shell
