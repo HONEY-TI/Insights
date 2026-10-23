@@ -29,8 +29,16 @@ RUN apt-get update \
         xclip \
         xsel \
         bubblewrap \
+        nano \
+        wget \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+USER ${USERNAME}
+RUN wget -qO /tmp/agy-install.sh https://antigravity.google/cli/install.sh \
+  && bash /tmp/agy-install.sh \
+  && rm -f /tmp/agy-install.sh
+USER root
 
 RUN git lfs install --system
 RUN npm install -g @openai/codex@latest --include=optional \
