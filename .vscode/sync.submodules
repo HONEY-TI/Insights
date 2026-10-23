@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# ============================================================
+# Sync dos submodules (a partir do repositório PAI)
+#
+# Funciona tanto no PRIMEIRO CLONE (submodules vazios) quanto
+# nas execuções seguintes, pois usa `--init`.
+#
+# Se este script estiver dentro de um submodule (ex.: .ai/tools/),
+# o `submodule update --remote` vai mover o checkout do
+# próprio submodule enquanto o script roda. Por isso o script se
+# copia para /tmp e executa a cópia.
+#
+# O script só faz init + update (checkout) dos submodules para a
+# última revisão remota — não tenta mesclar (merge) nada dentro
+# deles. Por isso, um merge travado em algum submodule nunca
+# bloqueia o sync dos demais nem exige --merge --abort depois.
+# ============================================================
+
+if [ -z "${SYNC_REEXEC:-}" ]; then
+  SYNC_ORIGIN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  SYNC_TMP="$(mktemp "${TMPDIR:-/tmp}/sync-submodules.XXXXXX")"
+  cp -- "${BASH_SOURCE[0]}" "$SYNC_TMP"
+  export SYNC_ORIGIN_DIR SYNC_TMP
+  SYNC_REEXEC=1 exec bash "$SYNC_TMP" "$@"
+fi
+
+trap 'rm -f -- "${SYNC_TMP:-}"' EXIT
+
+SCRIPT_DIR="${SYNC_ORIGIN_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)}"
+
+# Função compartilhada (ver lib/git-root.sh). Override: PROJECT_ROOT=/caminho
+# shellcheck source=lib/git-root.sh
+# >>> git-root-lib (GERADO por embed-lib.sh a partir de lib/git-root.sh — não edite aqui)
+# resolve_outer_repo <dir-do-repo>
+#
+# Sobe pelos SUPERPROJETOS (submodules registrados) até o mais
+# externo. Funciona com submodules aninhados em vários níveis.
+resolve_outer_repo() {
+  local TOP="$1"
+  local SUPER
+
+  while true; do
+    SUPER="$(git -C "$TOP" rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+    [ -z "$SUPER" ] && break
+    TOP="$SUPER"
+  done
+
+  printf '%s\n' "$TOP"
+}
+
+# resolve_project_root <dir-inicial>
+#
+# Imprime a raiz do projeto (repositório mais externo).
+# Retorna 1 se <dir-inicial> não estiver dentro de um repositório.
+#
+#   1) superprojeto oficial (submodule registrado)
+#   2) fallback: clone aninhado não registrado — só sobe se o
+#      repositório acima também tiver .gitmodules (evita capturar
+#      um repo não relacionado, como um $HOME versionado).
+resolve_project_root() {
+  local TOP
+  local PARENT_TOP
+
+  TOP="$(git -C "$1" rev-parse --show-toplevel 2>/dev/null)" || return 1
+
+  while true; do
+    TOP="$(resolve_outer_repo "$TOP")"
+
+    PARENT_TOP="$(git -C "$(dirname -- "$TOP")" rev-parse --show-toplevel 2>/dev/null || true)"
+
+    if [ -n "$PARENT_TOP" ] \
+      && [ "$PARENT_TOP" != "$TOP" ] \
+      && [ -f "$PARENT_TOP/.gitmodules" ]; then
+      TOP="$PARENT_TOP"
+      continue
+    fi
+
+    break
+  done
+
+  printf '%s\n' "$TOP"
+}
+
+# init_project_root <dir-inicial>
+#
+# Define PROJECT_ROOT e entra nele (cd).
+# Override manual: PROJECT_ROOT=/caminho ./script.sh
+init_project_root() {
+  local START="$1"
+
+  if [ -n "${PROJECT_ROOT:-}" ]; then
+    PROJECT_ROOT="$(git -C "$PROJECT_ROOT" rev-parse --show-toplevel 2>/dev/null)" || {
+      echo "❌ PROJECT_ROOT informado não é um repositório Git." >&2
+      return 1
+    }
+  else
+    PROJECT_ROOT="$(resolve_project_root "$START")" || {
+      echo "❌ Não encontrei um repositório Git a partir de: $START" >&2
+      return 1
+    }
+  fi
+
+  cd "$PROJECT_ROOT" || return 1
+}
+
+# ============================================================
+# Ordem dos submodules: o .ai SEMPRE vem primeiro
+# ============================================================
+#
+# Caminho do submodule prioritário (relativo ao repositório).
+# Override: AI_SUBMODULE_PATH=outro/caminho
+#
+# submodule_entries <repo>
+#   Imprime as linhas "submodule.<nome>.path <caminho>" do .gitmodules
+#   de <repo>, com o submodule prioritário (.ai) na PRIMEIRA posição.
+#   A ordem relativa dos demais é preservada.
+submodule_entries() {
+  local REPO="$1"
+  local FIRST="${AI_SUBMODULE_PATH:-.ai}"
+  local ALL
+
+  [ -f "$REPO/.gitmodules" ] || return 0
+
+  ALL="$(
+    git -C "$REPO" config -f .gitmodules \
+      --get-regexp '^submodule\..*\.path$' 2>/dev/null || true
+  )"
+
+  [ -z "$ALL" ] && return 0
+
+  printf '%s\n' "$ALL" | awk -v first="$FIRST" '
+    {
+      p = $0
+      sub(/^[^ ]+ /, "", p)
+      if (p == first) { print; next }
+      rest[++n] = $0
+    }
+    END { for (i = 1; i <= n; i++) print rest[i] }
+  '
+}
+
+# submodule_paths <repo> — igual a submodule_entries, só os caminhos.
+submodule_paths() {
+  submodule_entries "$1" | sed 's/^[^ ]* //'
+}
+# <<< git-root-lib
+
+init_project_root "$SCRIPT_DIR" || exit 1
+
+# .git pode ser pasta ou arquivo; pergunta ao Git onde fica o lock
+CONFIG_LOCK="$(git rev-parse --git-path config.lock)"
+
+if [ -f "$CONFIG_LOCK" ]; then
+    echo "Removing $CONFIG_LOCK..."
+    rm -f "$CONFIG_LOCK"
+fi
+
+echo "📁 Script dir:   $SCRIPT_DIR"
+echo "📁 Project root: $PROJECT_ROOT"
+echo "🔄 [Sync] Updating submodules..."
+
+git submodule sync --recursive
+
+# O .ai SEMPRE é atualizado primeiro, antes de qualquer outro submodule.
+AI_PATH="${AI_SUBMODULE_PATH:-.ai}"
+OTHERS=()
+AI_FOUND=0
+
+while IFS= read -r SUB_PATH; do
+  [ -z "$SUB_PATH" ] && continue
+
+  if [ "$SUB_PATH" = "$AI_PATH" ]; then
+    AI_FOUND=1
+  else
+    OTHERS+=("$SUB_PATH")
+  fi
+done < <(submodule_paths "$PROJECT_ROOT")
+
+# update_submodule <caminho>
+#
+# Faz init + checkout de UM submodule. Se o submodule tiver commit
+# não realizado (alteração local não commitada) ou qualquer outro
+# estado que impeça o checkout, não derruba o script: avisa e pula.
+update_submodule() {
+  local path="$1"
+
+  if git submodule update --init --remote --recursive -- "$path"; then
+    return 0
+  fi
+
+  echo "⚠️  [Sync] Skipping '$path' (uncommitted change or unresolved state — fix it manually and re-run)" >&2
+  return 1
+}
+
+SKIPPED=()
+
+# --init: inicializa e clona o submodule se for o primeiro clone;
+# se já estiver inicializado, não faz nada de diferente.
+if [ "$AI_FOUND" -eq 1 ]; then
+  echo "🥇 [Sync] Updating $AI_PATH first..."
+  update_submodule "$AI_PATH" || SKIPPED+=("$AI_PATH")
+else
+  echo "ℹ️  [Sync] '$AI_PATH' is not a submodule of this project"
+fi
+
+if [ "${#OTHERS[@]}" -gt 0 ]; then
+  echo "🔄 [Sync] Updating remaining submodules..."
+  for SUB_PATH in "${OTHERS[@]}"; do
+    update_submodule "$SUB_PATH" || SKIPPED+=("$SUB_PATH")
+  done
+fi
+
+if [ "${#SKIPPED[@]}" -gt 0 ]; then
+  echo "⚠️  [Sync] Skipped submodules (need manual attention): ${SKIPPED[*]}"
+fi
+
+echo "✅ Sync completed"

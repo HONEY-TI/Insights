@@ -8,6 +8,7 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+SYNC_SUBMODULES="${ROOT_DIR}/.vscode/sync.submodules"
 BOOTSTRAP="${ROOT_DIR}/.ai/tools/bootstrap.sh"
 
 # Tempo máximo (segundos) aguardando outra inicialização terminar
@@ -34,16 +35,18 @@ log() {
 # ------------------------------------------------------------
 # Error handling
 # ------------------------------------------------------------
-
 on_error() {
     local exit_code=$?
     local line=$1
 
+    trap - ERR
+
     log "ERRO: execução interrompida na linha ${line} (exit=${exit_code})"
+
     exit "$exit_code"
 }
-
 trap 'on_error $LINENO' ERR
+
 
 # ------------------------------------------------------------
 # Escolhe um diretório onde lock e log possam ser gravados
@@ -97,6 +100,19 @@ fi
 
 # O lock é liberado automaticamente quando o script termina.
 # Não remover o arquivo de lock (evita condição de corrida).
+
+# ------------------------------------------------------------
+# Cleanup: remove o arquivo de lock ao terminar (sucesso ou erro)
+# ------------------------------------------------------------
+
+cleanup() {
+    trap - EXIT
+
+    if [[ -n "${LOCK_FILE:-}" && -f "$LOCK_FILE" ]]; then
+        rm -f -- "$LOCK_FILE" || true
+    fi
+}
+trap cleanup EXIT INT TERM
 
 # ------------------------------------------------------------
 # Validate scripts
@@ -201,7 +217,13 @@ log "ROOT:  $ROOT_DIR"
 log "STATE: $STATE_DIR"
 log ""
 
-# 1. Repository Bootstrap
+# 1. Sync Submodeles 
+run_step \
+    "Sync Submodeles" \
+    "$SYNC_SUBMODULES"
+
+
+# 2. Repository Bootstrap
 run_step \
     "Repository Bootstrap" \
     "$BOOTSTRAP"
