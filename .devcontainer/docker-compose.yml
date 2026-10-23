@@ -1,6 +1,6 @@
  #ssh -T github-alexfaria #ssh -T gitlab-alexfaria
 services:
-  insights:
+  insights-devcontainer:
     container_name: insights-devcontainer
     image: insights-devcontainer:latest
     tty: true
@@ -32,7 +32,7 @@ services:
       - seccomp:unconfined
     command: sleep infinity
     networks:
-      - insights-network
+      - dev-network
     deploy:
       resources:
         limits:
@@ -51,5 +51,5 @@ volumes:
     external: true
 
 networks:
-  insights-network:
+  dev-network:
     external: true
